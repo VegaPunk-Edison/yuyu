@@ -963,8 +963,7 @@
                         </button>
                         
                         <div className="detail-header">
-                            <img src={haus.icon} alt={haus.name} style={{ width: '64px', height: '64px', marginBottom: '12px' }} />
-                            <div className="detail-name">Haus {haus.name}</div>
+                            <img src={haus.icon} alt={haus.name} style={{ width: '120px', height: '120px' }} />
                         </div>
                         
                         {/* HAUSZIELE */}
@@ -1377,10 +1376,7 @@
                             ) : (
                                 <>
                                     <div className="detail-name">{selectedKid.name}</div>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '14px', marginTop: '8px', opacity: 0.9 }}>
-                                        <img src={selectedKid.haus.icon} alt={selectedKid.haus.name} style={{ width: '16px', height: '16px' }} />
-                                        Haus {selectedKid.haus.name}
-                                    </div>
+                                    <img src={selectedKid.haus.icon} alt={selectedKid.haus.name} style={{ width: '32px', height: '32px', marginTop: '8px' }} />
                                 </>
                             )}
                         </div>
@@ -1583,9 +1579,8 @@
                                             <img src={kid.avatar.src} alt={kid.avatar.label} />
                                         </div>
                                         <div className="kid-name">{kid.name}</div>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '10px', marginBottom: '8px', color: 'rgba(255,255,255,0.8)' }}>
-                                            <img src={kid.haus.icon} alt={kid.haus.name} style={{ width: '12px', height: '12px' }} />
-                                            Haus {kid.haus.name}
+                                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                                            <img src={kid.haus.icon} alt={kid.haus.name} style={{ width: '24px', height: '24px' }} />
                                         </div>
                                         <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                                             <div className="kid-bildung" style={{ flex: 1 }}>
@@ -1671,9 +1666,8 @@
                                                     />
                                                 </svg>
                                                 <div className="sanduhr-count">{totalBildung}</div>
-                                                <div className="sanduhr-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                                                    <img src={haus.icon} alt={haus.name} style={{ width: '14px', height: '14px' }} />
-                                                    {haus.name}
+                                                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '6px' }}>
+                                                    <img src={haus.icon} alt={haus.name} style={{ width: '28px', height: '28px' }} />
                                                 </div>
                                             </div>
                                         );
@@ -1758,10 +1752,7 @@
                                                     transition: 'all 0.2s'
                                                 }}
                                             >
-                                                <img src={haus.icon} alt={haus.name} style={{ width: '28px', height: '28px', marginBottom: '5px' }} />
-                                                <div style={{ fontSize: '12px', fontWeight: 'bold', color: haus.color }}>
-                                                    Haus {haus.name}
-                                                </div>
+                                                <img src={haus.icon} alt={haus.name} style={{ width: '48px', height: '48px' }} />
                                             </div>
                                         ))}
                                     </div>
