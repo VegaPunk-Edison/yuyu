@@ -1384,14 +1384,14 @@
                             </div>
                             <div className="stat-box">
                                 <div className="stat-value">{getPrinzipienBildungspunkte(selectedKid)}</div>
-                                <div className="stat-label">Prinzipien</div>
+                                <div className="stat-label">Tugend</div>
                             </div>
                             <div className="stat-box">
                                 <div className="stat-value">{getHabitsBildungspunkte(selectedKid)}</div>
-                                <div className="stat-label">Habits</div>
+                                <div className="stat-label">Habit</div>
                             </div>
                         </div>
-                        
+
                         {/* TABS */}
                         <div style={{ display: 'flex', gap: '0', marginBottom: '20px', borderBottom: '2px solid #d4af37' }}>
                             <button
@@ -1426,7 +1426,7 @@
                                     transition: 'all 0.2s'
                                 }}
                             >
-                                💎 Prinzipien
+                                💎 Tugend
                             </button>
                             <button
                                 onClick={() => setSelectedTab('habits')}
@@ -1443,7 +1443,7 @@
                                     transition: 'all 0.2s'
                                 }}
                             >
-                                🔄 Habits
+                                🔄 Habit
                             </button>
                         </div>
                         
@@ -1480,7 +1480,7 @@
                         {selectedTab === 'prinzipien' && (
                             <>
                                 <div className="faecher-section">
-                                    <div className="faecher-title">Werte & Prinzipien</div>
+                                    <div className="faecher-title">Werte & Tugend</div>
                                     {PRINZIPIEN.map(prinzip => (
                                         <div key={prinzip} className="fach-row">
                                             <div className="fach-name">{prinzip}</div>
@@ -1509,7 +1509,7 @@
                         {selectedTab === 'habits' && (
                             <>
                                 <div className="faecher-section">
-                                    <div className="faecher-title">Die 7 Habits</div>
+                                    <div className="faecher-title">Die 7 Habit</div>
                                     {HABITS.map(habit => (
                                         <div key={habit} className="fach-row">
                                             <div className="fach-name">{habit}</div>
@@ -1585,11 +1585,11 @@
                                             </div>
                                             <div className="kid-bildung" style={{ flex: 1, background: 'rgba(255,255,255,0.3)' }}>
                                                 {getPrinzipienBildungspunkte(kid)}
-                                                <div className="kid-bildung-label">Prinzipien</div>
+                                                <div className="kid-bildung-label">Tugend</div>
                                             </div>
                                             <div className="kid-bildung" style={{ flex: 1, background: 'rgba(255,255,255,0.2)' }}>
                                                 {getHabitsBildungspunkte(kid)}
-                                                <div className="kid-bildung-label">Habits</div>
+                                                <div className="kid-bildung-label">Habit</div>
                                             </div>
                                         </div>
                                     </div>
