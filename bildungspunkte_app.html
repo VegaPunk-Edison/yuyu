@@ -624,6 +624,8 @@
             { id: 'bonny-white', label: 'Bonny', src: BONNY_WHITE },
         ];
         
+        const PUNKTE_PRO_YUYU = 3; // Teilpunkte, die einen ganzen Yuyu-Punkt ergeben
+
         const SANDUHR_MAX = 20; // Punktestand, bei dem das Glas als 100% voll gilt
 
         const HAEUSER = [
@@ -788,23 +790,23 @@
             };
             
             const getBildungspunkte = (kid) => {
-                return Math.floor(getGesamtpunkte(kid) / 10);
+                return Math.floor(getGesamtpunkte(kid) / PUNKTE_PRO_YUYU);
             };
-            
+
             const getPrinzipienGesamtpunkte = (kid) => {
                 return Object.values(kid.prinzipien).reduce((a, b) => a + b, 0);
             };
-            
+
             const getPrinzipienBildungspunkte = (kid) => {
-                return Math.floor(getPrinzipienGesamtpunkte(kid) / 10);
+                return Math.floor(getPrinzipienGesamtpunkte(kid) / PUNKTE_PRO_YUYU);
             };
-            
+
             const getHabitsGesamtpunkte = (kid) => {
                 return Object.values(kid.habits).reduce((a, b) => a + b, 0);
             };
-            
+
             const getHabitsBildungspunkte = (kid) => {
-                return Math.floor(getHabitsGesamtpunkte(kid) / 10);
+                return Math.floor(getHabitsGesamtpunkte(kid) / PUNKTE_PRO_YUYU);
             };
 
             const getVerfuegbarePunkte = (kid) => {
