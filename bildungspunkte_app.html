@@ -539,6 +539,8 @@
         
         const AVATARS = ['👦', '👧', '🧒', '👨‍🎓', '👩‍🎓', '🎓', '⭐', '🌟'];
         
+        const SANDUHR_MAX = 20; // Punktestand, bei dem das Glas als 100% voll gilt
+
         const HAEUSER = [
             { name: 'Feuer', emoji: '🔥', color: '#e74c3c' },
             { name: 'Wasser', emoji: '💧', color: '#3498db' },
@@ -1248,33 +1250,51 @@
                                 <div className="sanduhren-container">
                                     {HAEUSER.map(haus => {
                                         const hausKids = kids.filter(k => k.haus.name === haus.name);
-                                        const totalBildung = hausKids.reduce((sum, kid) => 
+                                        const totalBildung = hausKids.reduce((sum, kid) =>
                                             sum + getBildungspunkte(kid) + getPrinzipienBildungspunkte(kid) + getHabitsBildungspunkte(kid), 0
                                         );
-                                        
+                                        const sanduhrFraction = Math.min(1, totalBildung / SANDUHR_MAX);
+                                        const sanduhrVoll = totalBildung >= SANDUHR_MAX;
+
                                         return (
-                                            <div 
-                                                key={haus.name} 
+                                            <div
+                                                key={haus.name}
                                                 className="sanduhr-box"
                                                 onClick={() => setSelectedHausName(haus.name)}
                                                 style={{ cursor: 'pointer' }}
                                             >
                                             <svg className="sanduhr-svg" viewBox="0 0 100 160">
                                                     <defs>
-                                                        <clipPath id={`sanduhr-clip-${haus.name}`}>
+                                                        <clipPath id={`sanduhr-clip-top-${haus.name}`}>
+                                                            <path d="M 20,10 L 80,10 L 50,80 Z" />
+                                                        </clipPath>
+                                                        <clipPath id={`sanduhr-clip-bottom-${haus.name}`}>
                                                             <path d="M 50,80 L 80,150 L 20,150 Z" />
                                                         </clipPath>
                                                     </defs>
 
-                                                    {/* Sandfüllstand (unteres Dreieck) */}
+                                                    {/* Oberes Glas: erst voll eingefärbt, wenn 100% erreicht sind */}
+                                                    {sanduhrVoll && (
+                                                        <rect
+                                                            x="20"
+                                                            y="10"
+                                                            width="60"
+                                                            height="70"
+                                                            fill={haus.color}
+                                                            opacity="0.2"
+                                                            clipPath={`url(#sanduhr-clip-top-${haus.name})`}
+                                                        />
+                                                    )}
+
+                                                    {/* Unteres Glas: Füllstand proportional zum Fortschritt */}
                                                     <rect
                                                         x="20"
-                                                        y={150 - Math.min(70, (totalBildung / 20) * 70)}
+                                                        y={150 - sanduhrFraction * 70}
                                                         width="60"
-                                                        height={Math.min(70, (totalBildung / 20) * 70)}
+                                                        height={sanduhrFraction * 70}
                                                         fill={haus.color}
                                                         opacity="0.2"
-                                                        clipPath={`url(#sanduhr-clip-${haus.name})`}
+                                                        clipPath={`url(#sanduhr-clip-bottom-${haus.name})`}
                                                     />
 
                                                     {/* Minimalistische Umrisslinie */}
