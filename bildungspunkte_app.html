@@ -176,7 +176,52 @@
             margin-top: 6px;
             font-weight: 500;
         }
-        
+
+        /* REWARDSSTORE */
+        .rewardstore-section {
+            margin-top: 20px;
+            padding-top: 12px;
+            border-top: 2px solid #d4af37;
+            cursor: pointer;
+        }
+
+        .reward-preview-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #f9f7f4;
+            border-radius: 8px;
+            margin-bottom: 6px;
+        }
+
+        .reward-preview-text {
+            font-size: 13px;
+            color: #2d5a3d;
+            font-weight: 500;
+        }
+
+        .reward-preview-cost {
+            font-size: 13px;
+            font-weight: bold;
+            color: #d4af37;
+        }
+
+        .rewardstore-empty {
+            text-align: center;
+            font-size: 13px;
+            color: #888;
+            padding: 10px 0;
+        }
+
+        .rewardstore-more {
+            text-align: center;
+            font-size: 11px;
+            color: #3a6b52;
+            font-weight: bold;
+            margin-top: 4px;
+        }
+
         /* DASHBOARD - Kind-Übersicht */
         .dashboard {
             display: flex;
@@ -409,7 +454,12 @@
         .btn-small.minus:hover {
             background: #6b3535;
         }
-        
+
+        .btn-small:disabled {
+            background: #bbb;
+            cursor: not-allowed;
+        }
+
         /* ADD KID FORM */
         .add-kid-section {
             background: #f9f7f4;
@@ -600,12 +650,24 @@
             const [hausZiele, setHausZiele] = useState({});
             const [academiaZiele, setAcademiaZiele] = useState([]);
             const [aufgaben, setAufgaben] = useState({});
-            
+
             // Add Modal States
             const [showAddZielModal, setShowAddZielModal] = useState(false);
             const [newZielText, setNewZielText] = useState('');
             const [zielType, setZielType] = useState('haus');
-            
+
+            // Inline-Bearbeitung von Hauszielen/Academia-Zielen/Aufgaben
+            const [editingItemId, setEditingItemId] = useState(null);
+            const [editingItemText, setEditingItemText] = useState('');
+
+            // Rewardsstore
+            const [rewards, setRewards] = useState([]);
+            const [showRewardStore, setShowRewardStore] = useState(false);
+            const [showAddRewardModal, setShowAddRewardModal] = useState(false);
+            const [newRewardText, setNewRewardText] = useState('');
+            const [newRewardCost, setNewRewardCost] = useState('');
+            const [redeemRewardId, setRedeemRewardId] = useState(null);
+
             // Load from localStorage on mount
             useEffect(() => {
                 const saved = localStorage.getItem('bildungspunkte_kids');
@@ -623,6 +685,10 @@
                 const savedAufgaben = localStorage.getItem('bildungspunkte_aufgaben');
                 if (savedAufgaben) {
                     setAufgaben(JSON.parse(savedAufgaben));
+                }
+                const savedRewards = localStorage.getItem('bildungspunkte_rewards');
+                if (savedRewards) {
+                    setRewards(JSON.parse(savedRewards));
                 }
             }, []);
             
@@ -645,6 +711,11 @@
             useEffect(() => {
                 localStorage.setItem('bildungspunkte_aufgaben', JSON.stringify(aufgaben));
             }, [aufgaben]);
+
+            // Save Rewards
+            useEffect(() => {
+                localStorage.setItem('bildungspunkte_rewards', JSON.stringify(rewards));
+            }, [rewards]);
             
             const addKid = () => {
                 if (!newKidName.trim() || kids.length >= 4) return;
@@ -656,7 +727,8 @@
                     haus: selectedHaus,
                     punkte: FAECHER.reduce((acc, fach) => ({ ...acc, [fach]: 0 }), {}),
                     prinzipien: PRINZIPIEN.reduce((acc, prinz) => ({ ...acc, [prinz]: 0 }), {}),
-                    habits: HABITS.reduce((acc, habit) => ({ ...acc, [habit]: 0 }), {})
+                    habits: HABITS.reduce((acc, habit) => ({ ...acc, [habit]: 0 }), {}),
+                    eingeloest: 0
                 };
                 
                 setKids([...kids, newKid]);
@@ -734,7 +806,12 @@
             const getHabitsBildungspunkte = (kid) => {
                 return Math.floor(getHabitsGesamtpunkte(kid) / 10);
             };
-            
+
+            const getVerfuegbarePunkte = (kid) => {
+                const total = getBildungspunkte(kid) + getPrinzipienBildungspunkte(kid) + getHabitsBildungspunkte(kid);
+                return total - (kid.eingeloest || 0);
+            };
+
             const updateKidName = (kidId, newName) => {
                 setKids(kids.map(kid => {
                     if (kid.id === kidId) {
@@ -770,6 +847,7 @@
                 
                 setNewZielText('');
                 setZielType('haus');
+                setShowAddZielModal(false);
             };
             
             const deleteZiel = (zielId) => {
@@ -781,15 +859,31 @@
                     });
                 }
             };
-            
+
+            const updateZiel = (zielId, newText) => {
+                if (selectedHausName) {
+                    const key = `haus_${selectedHausName}`;
+                    setHausZiele({
+                        ...hausZiele,
+                        [key]: (hausZiele[key] || []).map(z => z.id === zielId ? { ...z, text: newText } : z)
+                    });
+                }
+                setEditingItemId(null);
+            };
+
             const deleteAcademiaZiel = (zielId) => {
                 setAcademiaZiele(academiaZiele.filter(z => z.id !== zielId));
             };
-            
+
+            const updateAcademiaZiel = (zielId, newText) => {
+                setAcademiaZiele(academiaZiele.map(z => z.id === zielId ? { ...z, text: newText } : z));
+                setEditingItemId(null);
+            };
+
             // AUFGABEN
             const addAufgabe = () => {
                 if (!newZielText.trim() || !selectedHausName) return;
-                
+
                 const key = `aufgaben_${selectedHausName}`;
                 setAufgaben({
                     ...aufgaben,
@@ -798,7 +892,7 @@
                 setNewZielText('');
                 setShowAddZielModal(false);
             };
-            
+
             const deleteAufgabe = (aufgabeId) => {
                 if (selectedHausName) {
                     const key = `aufgaben_${selectedHausName}`;
@@ -808,7 +902,44 @@
                     });
                 }
             };
-            
+
+            const updateAufgabe = (aufgabeId, newText) => {
+                if (selectedHausName) {
+                    const key = `aufgaben_${selectedHausName}`;
+                    setAufgaben({
+                        ...aufgaben,
+                        [key]: (aufgaben[key] || []).map(a => a.id === aufgabeId ? { ...a, text: newText } : a)
+                    });
+                }
+                setEditingItemId(null);
+            };
+
+            // REWARDSSTORE
+            const addReward = () => {
+                const cost = Number(newRewardCost);
+                if (!newRewardText.trim() || !cost || cost <= 0) return;
+
+                setRewards([...rewards, { id: Date.now(), text: newRewardText, cost }]);
+                setNewRewardText('');
+                setNewRewardCost('');
+                setShowAddRewardModal(false);
+            };
+
+            const deleteReward = (rewardId) => {
+                setRewards(rewards.filter(r => r.id !== rewardId));
+                setRedeemRewardId(null);
+            };
+
+            const redeemReward = (kidId, reward) => {
+                setKids(kids.map(kid => {
+                    if (kid.id === kidId) {
+                        return { ...kid, eingeloest: (kid.eingeloest || 0) + reward.cost };
+                    }
+                    return kid;
+                }));
+                setRedeemRewardId(null);
+            };
+
             // GEMEINSCHAFTSRAUM VIEW
             if (selectedHausName !== null) {
                 const haus = HAEUSER.find(h => h.name === selectedHausName);
@@ -831,16 +962,33 @@
                             <div className="faecher-title">🎯 Hausziele</div>
                             {(hausZiele[hausZieListKey] || []).map(ziel => (
                                 <div key={ziel.id} className="fach-row">
-                                    <div className="fach-name">{ziel.text}</div>
-                                    <button 
-                                        className="btn-small minus"
-                                        onClick={() => deleteZiel(ziel.id)}
-                                    >
-                                        ✕
-                                    </button>
+                                    {editingItemId === ziel.id ? (
+                                        <>
+                                            <input
+                                                type="text"
+                                                value={editingItemText}
+                                                onChange={(e) => setEditingItemText(e.target.value)}
+                                                onKeyPress={(e) => e.key === 'Enter' && updateZiel(ziel.id, editingItemText)}
+                                                autoFocus
+                                                style={{ flex: 1, padding: '6px 10px', border: '2px solid #d4af37', borderRadius: '6px', fontSize: '14px', marginRight: '8px' }}
+                                            />
+                                            <div className="fach-buttons">
+                                                <button className="btn-small" onClick={() => updateZiel(ziel.id, editingItemText)} style={{ background: '#d4af37', color: '#2d5a3d' }}>✓</button>
+                                                <button className="btn-small minus" onClick={() => setEditingItemId(null)}>✕</button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="fach-name">{ziel.text}</div>
+                                            <div className="fach-buttons">
+                                                <button className="btn-small" onClick={() => { setEditingItemId(ziel.id); setEditingItemText(ziel.text); }} style={{ background: '#d4af37', color: '#2d5a3d' }}>✎</button>
+                                                <button className="btn-small minus" onClick={() => deleteZiel(ziel.id)}>✕</button>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             ))}
-                            <button 
+                            <button
                                 className="btn-small"
                                 onClick={() => { setZielType('haus'); setShowAddZielModal(true); }}
                                 style={{ marginTop: '10px', width: '100%' }}
@@ -848,22 +996,39 @@
                                 + Hausziel hinzufügen
                             </button>
                         </div>
-                        
+
                         {/* ACADEMIA ZIELE */}
                         <div style={{ marginBottom: '25px' }}>
                             <div className="faecher-title">📖 Academia Ziele</div>
                             {academiaZiele.map(ziel => (
                                 <div key={ziel.id} className="fach-row">
-                                    <div className="fach-name">{ziel.text}</div>
-                                    <button 
-                                        className="btn-small minus"
-                                        onClick={() => deleteAcademiaZiel(ziel.id)}
-                                    >
-                                        ✕
-                                    </button>
+                                    {editingItemId === ziel.id ? (
+                                        <>
+                                            <input
+                                                type="text"
+                                                value={editingItemText}
+                                                onChange={(e) => setEditingItemText(e.target.value)}
+                                                onKeyPress={(e) => e.key === 'Enter' && updateAcademiaZiel(ziel.id, editingItemText)}
+                                                autoFocus
+                                                style={{ flex: 1, padding: '6px 10px', border: '2px solid #d4af37', borderRadius: '6px', fontSize: '14px', marginRight: '8px' }}
+                                            />
+                                            <div className="fach-buttons">
+                                                <button className="btn-small" onClick={() => updateAcademiaZiel(ziel.id, editingItemText)} style={{ background: '#d4af37', color: '#2d5a3d' }}>✓</button>
+                                                <button className="btn-small minus" onClick={() => setEditingItemId(null)}>✕</button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="fach-name">{ziel.text}</div>
+                                            <div className="fach-buttons">
+                                                <button className="btn-small" onClick={() => { setEditingItemId(ziel.id); setEditingItemText(ziel.text); }} style={{ background: '#d4af37', color: '#2d5a3d' }}>✎</button>
+                                                <button className="btn-small minus" onClick={() => deleteAcademiaZiel(ziel.id)}>✕</button>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             ))}
-                            <button 
+                            <button
                                 className="btn-small"
                                 onClick={() => { setZielType('academia'); setShowAddZielModal(true); }}
                                 style={{ marginTop: '10px', width: '100%' }}
@@ -871,22 +1036,39 @@
                                 + Academia Ziel hinzufügen
                             </button>
                         </div>
-                        
+
                         {/* BLACKBOARD - AUFGABEN */}
                         <div style={{ marginBottom: '25px' }}>
                             <div className="faecher-title">📋 Blackboard - Aufgaben</div>
                             {(aufgaben[aufgabenKey] || []).map(aufgabe => (
                                 <div key={aufgabe.id} className="fach-row" style={{ background: '#f9f7f4', padding: '10px 12px', borderRadius: '6px', marginBottom: '8px' }}>
-                                    <div className="fach-name">{aufgabe.text}</div>
-                                    <button 
-                                        className="btn-small minus"
-                                        onClick={() => deleteAufgabe(aufgabe.id)}
-                                    >
-                                        ✕
-                                    </button>
+                                    {editingItemId === aufgabe.id ? (
+                                        <>
+                                            <input
+                                                type="text"
+                                                value={editingItemText}
+                                                onChange={(e) => setEditingItemText(e.target.value)}
+                                                onKeyPress={(e) => e.key === 'Enter' && updateAufgabe(aufgabe.id, editingItemText)}
+                                                autoFocus
+                                                style={{ flex: 1, padding: '6px 10px', border: '2px solid #d4af37', borderRadius: '6px', fontSize: '14px', marginRight: '8px' }}
+                                            />
+                                            <div className="fach-buttons">
+                                                <button className="btn-small" onClick={() => updateAufgabe(aufgabe.id, editingItemText)} style={{ background: '#d4af37', color: '#2d5a3d' }}>✓</button>
+                                                <button className="btn-small minus" onClick={() => setEditingItemId(null)}>✕</button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="fach-name">{aufgabe.text}</div>
+                                            <div className="fach-buttons">
+                                                <button className="btn-small" onClick={() => { setEditingItemId(aufgabe.id); setEditingItemText(aufgabe.text); }} style={{ background: '#d4af37', color: '#2d5a3d' }}>✎</button>
+                                                <button className="btn-small minus" onClick={() => deleteAufgabe(aufgabe.id)}>✕</button>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             ))}
-                            <button 
+                            <button
                                 className="btn-small"
                                 onClick={() => { setZielType('aufgabe'); setShowAddZielModal(true); }}
                                 style={{ marginTop: '10px', width: '100%' }}
@@ -894,7 +1076,7 @@
                                 + Aufgabe hinzufügen
                             </button>
                         </div>
-                        
+
                         {/* ADD MODAL */}
                         {showAddZielModal && (
                             <div className="modal-overlay" onClick={() => setShowAddZielModal(false)}>
@@ -935,7 +1117,138 @@
                     </div>
                 );
             }
-            
+
+            // REWARDSSTORE VIEW
+            if (showRewardStore) {
+                return (
+                    <div className="container detail-view">
+                        <button className="back-button" onClick={() => { setShowRewardStore(false); setRedeemRewardId(null); }}>
+                            ← Zurück
+                        </button>
+
+                        <div className="detail-header">
+                            <div style={{ fontSize: '48px', marginBottom: '12px' }}>🎁</div>
+                            <div className="detail-name">Rewardsstore</div>
+                        </div>
+
+                        {rewards.length === 0 ? (
+                            <div className="empty-state">
+                                <p>Noch keine Rewards hinzugefügt.</p>
+                            </div>
+                        ) : (
+                            rewards.map(reward => {
+                                const isRedeeming = redeemRewardId === reward.id;
+                                return (
+                                    <div key={reward.id} style={{ marginBottom: '12px' }}>
+                                        <div className="fach-row">
+                                            <div className="fach-name">{reward.text}</div>
+                                            <div className="fach-punkte">{reward.cost} P</div>
+                                            <div className="fach-buttons">
+                                                <button
+                                                    className="btn-small"
+                                                    onClick={() => setRedeemRewardId(isRedeeming ? null : reward.id)}
+                                                    disabled={kids.length === 0}
+                                                >
+                                                    Einlösen
+                                                </button>
+                                                <button
+                                                    className="btn-small minus"
+                                                    onClick={() => deleteReward(reward.id)}
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {isRedeeming && (
+                                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', padding: '10px 0', justifyContent: 'center' }}>
+                                                {kids.map(kid => {
+                                                    const balance = getVerfuegbarePunkte(kid);
+                                                    const canAfford = balance >= reward.cost;
+                                                    return (
+                                                        <button
+                                                            key={kid.id}
+                                                            onClick={() => canAfford && redeemReward(kid.id, reward)}
+                                                            disabled={!canAfford}
+                                                            style={{
+                                                                display: 'flex',
+                                                                flexDirection: 'column',
+                                                                alignItems: 'center',
+                                                                gap: '4px',
+                                                                background: canAfford ? '#f0f8f5' : '#f5f5f5',
+                                                                border: `2px solid ${canAfford ? '#3a6b52' : '#ddd'}`,
+                                                                borderRadius: '10px',
+                                                                padding: '8px',
+                                                                cursor: canAfford ? 'pointer' : 'not-allowed',
+                                                                opacity: canAfford ? 1 : 0.5,
+                                                                minWidth: '70px'
+                                                            }}
+                                                        >
+                                                            <img src={kid.avatar.src} alt={kid.avatar.label} style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                            <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#2d5a3d' }}>{kid.name}</span>
+                                                            <span style={{ fontSize: '10px', color: '#5a5a5a' }}>{balance} P</span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })
+                        )}
+
+                        <button
+                            className="btn-small"
+                            onClick={() => setShowAddRewardModal(true)}
+                            style={{ marginTop: '10px', width: '100%' }}
+                        >
+                            + Reward hinzufügen
+                        </button>
+
+                        {showAddRewardModal && (
+                            <div className="modal-overlay" onClick={() => setShowAddRewardModal(false)}>
+                                <div className="modal" onClick={(e) => e.stopPropagation()}>
+                                    <div className="modal-header">
+                                        <div className="modal-title">🎁 Reward hinzufügen</div>
+                                        <button className="modal-close" onClick={() => setShowAddRewardModal(false)}>✕</button>
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label>Belohnung</label>
+                                        <input
+                                            type="text"
+                                            placeholder="z.B. Kinoabend"
+                                            value={newRewardText}
+                                            onChange={(e) => setNewRewardText(e.target.value)}
+                                            autoFocus
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label>Punktekosten</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            placeholder="z.B. 10"
+                                            value={newRewardCost}
+                                            onChange={(e) => setNewRewardCost(e.target.value)}
+                                            onKeyPress={(e) => e.key === 'Enter' && addReward()}
+                                        />
+                                    </div>
+
+                                    <button
+                                        className="btn-add-kid"
+                                        onClick={addReward}
+                                        disabled={!newRewardText.trim() || !newRewardCost || Number(newRewardCost) <= 0}
+                                    >
+                                        Reward hinzufügen
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+
             // DETAIL VIEW
             if (selectedKidId !== null) {
                 const selectedKid = kids.find(k => k.id === selectedKidId);
@@ -1355,7 +1668,25 @@
                             </div>
                         </>
                     )}
-                    
+
+                    {/* REWARDSSTORE PREVIEW */}
+                    <div className="rewardstore-section" onClick={() => setShowRewardStore(true)}>
+                        <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '10px', color: '#2d5a3d', textAlign: 'center' }}>
+                            🎁 Rewardsstore
+                        </div>
+                        {rewards.length === 0 ? (
+                            <div className="rewardstore-empty">Noch keine Rewards – antippen zum Hinzufügen</div>
+                        ) : (
+                            rewards.slice(0, 3).map(reward => (
+                                <div key={reward.id} className="reward-preview-row">
+                                    <span className="reward-preview-text">{reward.text}</span>
+                                    <span className="reward-preview-cost">{reward.cost} P</span>
+                                </div>
+                            ))
+                        )}
+                        <div className="rewardstore-more">Alle Rewards ansehen →</div>
+                    </div>
+
                     {showAddKidModal && (
                         <div className="modal-overlay" onClick={() => setShowAddKidModal(false)}>
                             <div className="modal" onClick={(e) => e.stopPropagation()}>
