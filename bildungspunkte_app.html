@@ -1,0 +1,1383 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bildungspunkte Tracker</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f1ed;
+            min-height: 100vh;
+            padding: 10px;
+        }
+        
+        #root {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 10px 40px rgba(45, 90, 61, 0.15);
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #d4af37;
+            padding-bottom: 12px;
+        }
+        
+        .header-content {
+            text-align: center;
+            flex: 1;
+        }
+        
+        .header h1 {
+            font-size: 26px;
+            color: #2d5a3d;
+            margin-bottom: 4px;
+        }
+        
+        .header p {
+            color: #5a5a5a;
+            font-size: 12px;
+        }
+        
+        .header-icon {
+            background: #3a6b52;
+            color: #f5f1ed;
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            font-size: 22px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, transform 0.2s;
+        }
+        
+        .header-icon:hover {
+            background: #2d5a3d;
+            transform: scale(1.1);
+        }
+        
+        /* MODAL */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: flex-end;
+            z-index: 1000;
+        }
+        
+        .modal {
+            background: #f5f1ed;
+            width: 100%;
+            max-width: 500px;
+            border-radius: 20px 20px 0 0;
+            padding: 30px 20px 20px;
+            animation: slideUp 0.3s ease;
+            max-height: 90vh;
+            overflow-y: auto;
+            border-top: 3px solid #d4af37;
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+            }
+            to {
+                transform: translateY(0);
+            }
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2d5a3d;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #5a5a5a;
+            padding: 0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* SANDUHR BEREICH */
+        .sanduhren-section {
+            margin-top: 20px;
+            padding-top: 12px;
+            border-top: 2px solid #d4af37;
+        }
+        
+        .sanduhren-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .sanduhr-box {
+            text-align: center;
+        }
+        
+        .sanduhr-svg {
+            width: 100%;
+            height: 140px;
+            margin-bottom: 8px;
+        }
+        
+        .sanduhr-count {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2d5a3d;
+            margin-top: 6px;
+        }
+        
+        .sanduhr-label {
+            font-size: 11px;
+            color: #5a5a5a;
+            margin-top: 6px;
+            font-weight: 500;
+        }
+        
+        /* DASHBOARD - Kind-Übersicht */
+        .dashboard {
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            padding-bottom: 4px;
+        }
+        
+        .dashboard::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .kid-card {
+            background: linear-gradient(135deg, #3a6b52 0%, #2d5a3d 100%);
+            color: #f5f1ed;
+            padding: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(45, 90, 61, 0.3);
+            min-width: 140px;
+            flex-shrink: 0;
+            scroll-snap-align: start;
+        }
+        
+        .kid-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(45, 90, 61, 0.5);
+        }
+        
+        .kid-avatar {
+            font-size: 28px;
+            margin-bottom: 6px;
+        }
+        
+        .kid-name {
+            font-size: 15px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        
+        .kid-bildung {
+            font-size: 18px;
+            font-weight: bold;
+            background: rgba(255,255,255,0.2);
+            padding: 5px;
+            border-radius: 8px;
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .kid-bildung-label {
+            font-size: 9px;
+            margin-top: 2px;
+            opacity: 0.9;
+        }
+        
+        /* DETAIL-VIEW */
+        .detail-view {
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .back-button {
+            background: #3a6b52;
+            color: #f5f1ed;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .back-button:hover {
+            background: #2d5a3d;
+        }
+        
+        .detail-header {
+            background: linear-gradient(135deg, #3a6b52 0%, #2d5a3d 100%);
+            color: #f5f1ed;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            border-top: 3px solid #d4af37;
+        }
+        
+        .detail-avatar {
+            font-size: 56px;
+            margin-bottom: 10px;
+        }
+        
+        .detail-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .bildung-stats {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-box {
+            background: #f9f7f4;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            border-left: 4px solid #d4af37;
+            flex: 1;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2d5a3d;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #5a5a5a;
+            margin-top: 5px;
+            text-transform: uppercase;
+        }
+        
+        /* FÄCHER */
+        .faecher-section {
+            margin-bottom: 20px;
+        }
+        
+        .faecher-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #2d5a3d;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .fach-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e8e4e0;
+        }
+        
+        .fach-row:last-child {
+            border-bottom: none;
+        }
+        
+        .fach-name {
+            font-size: 14px;
+            color: #2d5a3d;
+            font-weight: 500;
+            flex: 1;
+        }
+        
+        .fach-punkte {
+            font-size: 18px;
+            font-weight: bold;
+            color: #d4af37;
+            margin-right: 15px;
+            min-width: 40px;
+            text-align: right;
+        }
+        
+        .fach-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn-small {
+            background: #3a6b52;
+            color: #f5f1ed;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        
+        .btn-small:hover {
+            background: #2d5a3d;
+        }
+        
+        .btn-small.minus {
+            background: #8b4545;
+        }
+        
+        .btn-small.minus:hover {
+            background: #6b3535;
+        }
+        
+        /* ADD KID FORM */
+        .add-kid-section {
+            background: #f9f7f4;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            border-left: 4px solid #d4af37;
+        }
+        
+        .add-kid-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #2d5a3d;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            color: #2d5a3d;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            color: #1a1a1a;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #3a6b52;
+            box-shadow: 0 0 0 3px rgba(58, 107, 82, 0.1);
+        }
+        
+        .avatar-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .avatar-option {
+            padding: 10px;
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 32px;
+            transition: all 0.2s;
+            background: white;
+        }
+        
+        .avatar-option:hover {
+            border-color: #3a6b52;
+        }
+        
+        .avatar-option.selected {
+            border-color: #3a6b52;
+            background: #f0f8f5;
+        }
+        
+        .btn-add-kid {
+            width: 100%;
+            background: #3a6b52;
+            color: #f5f1ed;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        
+        .btn-add-kid:hover {
+            background: #2d5a3d;
+        }
+        
+        .btn-add-kid:disabled {
+            background: #bbb;
+            cursor: not-allowed;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #888;
+        }
+        
+        .empty-state p {
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        const FAECHER = [
+            'Sprache & Rhetorik',
+            'Mathematik & Logik',
+            'Naturwissenschaften',
+            'Geschichte',
+            'Hauswirtschaft',
+            'Praktisches Handeln',
+            'Kultur (Montessori)',
+            'Sport'
+        ];
+        
+        const PRINZIPIEN = [
+            'Dankbarkeit',
+            'Verantwortungsgefühl',
+            'Bescheidenheit im Auftreten',
+            'Loyalität',
+            'Verlässlichkeit',
+            'Ruhige Souveränität',
+            'Langfristiges Denken',
+            'Sprachliche Souveränität',
+            'Kulturelles Kapital',
+            'Finanzielle Bildung'
+        ];
+        
+        const HABITS = [
+            'Sei proaktiv',
+            'Beginne mit dem Ziel vor Augen',
+            'Räume dem Wichtigsten Platz ein',
+            'Denke Win-Win',
+            'Verstehe zuerst, dann lasse dich verstehen',
+            'Synergiere',
+            'Schärfe deine Säge'
+        ];
+        
+        const AVATARS = ['👦', '👧', '🧒', '👨‍🎓', '👩‍🎓', '🎓', '⭐', '🌟'];
+        
+        const HAEUSER = [
+            { name: 'Feuer', emoji: '🔥', color: '#e74c3c' },
+            { name: 'Wasser', emoji: '💧', color: '#3498db' },
+            { name: 'Erde', emoji: '🌍', color: '#27ae60' },
+            { name: 'Luft', emoji: '💨', color: '#f1c40f' }
+        ];
+        
+        function App() {
+            const [kids, setKids] = useState([]);
+            const [selectedKidId, setSelectedKidId] = useState(null);
+            const [selectedHausName, setSelectedHausName] = useState(null);
+            const [selectedTab, setSelectedTab] = useState('bildung');
+            const [showAddKidModal, setShowAddKidModal] = useState(false);
+            const [newKidName, setNewKidName] = useState('');
+            const [selectedAvatar, setSelectedAvatar] = useState(AVATARS[0]);
+            const [selectedHaus, setSelectedHaus] = useState(HAEUSER[0]);
+            const [editMode, setEditMode] = useState(false);
+            const [editedName, setEditedName] = useState('');
+            const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+            
+            // Haus-Daten
+            const [hausZiele, setHausZiele] = useState({});
+            const [academiaZiele, setAcademiaZiele] = useState([]);
+            const [aufgaben, setAufgaben] = useState({});
+            
+            // Add Modal States
+            const [showAddZielModal, setShowAddZielModal] = useState(false);
+            const [newZielText, setNewZielText] = useState('');
+            const [zielType, setZielType] = useState('haus');
+            
+            // Load from localStorage on mount
+            useEffect(() => {
+                const saved = localStorage.getItem('bildungspunkte_kids');
+                if (saved) {
+                    setKids(JSON.parse(saved));
+                }
+                const savedHausZiele = localStorage.getItem('bildungspunkte_hausziele');
+                if (savedHausZiele) {
+                    setHausZiele(JSON.parse(savedHausZiele));
+                }
+                const savedAcademiaZiele = localStorage.getItem('bildungspunkte_academia');
+                if (savedAcademiaZiele) {
+                    setAcademiaZiele(JSON.parse(savedAcademiaZiele));
+                }
+                const savedAufgaben = localStorage.getItem('bildungspunkte_aufgaben');
+                if (savedAufgaben) {
+                    setAufgaben(JSON.parse(savedAufgaben));
+                }
+            }, []);
+            
+            // Save to localStorage whenever kids change
+            useEffect(() => {
+                localStorage.setItem('bildungspunkte_kids', JSON.stringify(kids));
+            }, [kids]);
+            
+            // Save Haus-Ziele
+            useEffect(() => {
+                localStorage.setItem('bildungspunkte_hausziele', JSON.stringify(hausZiele));
+            }, [hausZiele]);
+            
+            // Save Academia-Ziele
+            useEffect(() => {
+                localStorage.setItem('bildungspunkte_academia', JSON.stringify(academiaZiele));
+            }, [academiaZiele]);
+            
+            // Save Aufgaben
+            useEffect(() => {
+                localStorage.setItem('bildungspunkte_aufgaben', JSON.stringify(aufgaben));
+            }, [aufgaben]);
+            
+            const addKid = () => {
+                if (!newKidName.trim() || kids.length >= 4) return;
+                
+                const newKid = {
+                    id: Date.now(),
+                    name: newKidName,
+                    avatar: selectedAvatar,
+                    haus: selectedHaus,
+                    punkte: FAECHER.reduce((acc, fach) => ({ ...acc, [fach]: 0 }), {}),
+                    prinzipien: PRINZIPIEN.reduce((acc, prinz) => ({ ...acc, [prinz]: 0 }), {}),
+                    habits: HABITS.reduce((acc, habit) => ({ ...acc, [habit]: 0 }), {})
+                };
+                
+                setKids([...kids, newKid]);
+                setNewKidName('');
+                setSelectedAvatar(AVATARS[0]);
+                setSelectedHaus(HAEUSER[0]);
+                setShowAddKidModal(false);
+            };
+            
+            const updatePunkte = (kidId, fach, delta) => {
+                setKids(kids.map(kid => {
+                    if (kid.id === kidId) {
+                        return {
+                            ...kid,
+                            punkte: {
+                                ...kid.punkte,
+                                [fach]: Math.max(0, kid.punkte[fach] + delta)
+                            }
+                        };
+                    }
+                    return kid;
+                }));
+            };
+            
+            const updatePrinzipienPunkte = (kidId, prinzip, delta) => {
+                setKids(kids.map(kid => {
+                    if (kid.id === kidId) {
+                        return {
+                            ...kid,
+                            prinzipien: {
+                                ...kid.prinzipien,
+                                [prinzip]: Math.max(0, kid.prinzipien[prinzip] + delta)
+                            }
+                        };
+                    }
+                    return kid;
+                }));
+            };
+            
+            const updateHabitsPunkte = (kidId, habit, delta) => {
+                setKids(kids.map(kid => {
+                    if (kid.id === kidId) {
+                        return {
+                            ...kid,
+                            habits: {
+                                ...kid.habits,
+                                [habit]: Math.max(0, kid.habits[habit] + delta)
+                            }
+                        };
+                    }
+                    return kid;
+                }));
+            };
+            
+            const getGesamtpunkte = (kid) => {
+                return Object.values(kid.punkte).reduce((a, b) => a + b, 0);
+            };
+            
+            const getBildungspunkte = (kid) => {
+                return Math.floor(getGesamtpunkte(kid) / 10);
+            };
+            
+            const getPrinzipienGesamtpunkte = (kid) => {
+                return Object.values(kid.prinzipien).reduce((a, b) => a + b, 0);
+            };
+            
+            const getPrinzipienBildungspunkte = (kid) => {
+                return Math.floor(getPrinzipienGesamtpunkte(kid) / 10);
+            };
+            
+            const getHabitsGesamtpunkte = (kid) => {
+                return Object.values(kid.habits).reduce((a, b) => a + b, 0);
+            };
+            
+            const getHabitsBildungspunkte = (kid) => {
+                return Math.floor(getHabitsGesamtpunkte(kid) / 10);
+            };
+            
+            const updateKidName = (kidId, newName) => {
+                setKids(kids.map(kid => {
+                    if (kid.id === kidId) {
+                        return { ...kid, name: newName };
+                    }
+                    return kid;
+                }));
+                setEditMode(false);
+            };
+            
+            const deleteKid = (kidId) => {
+                setKids(kids.filter(k => k.id !== kidId));
+                setSelectedKidId(null);
+                setShowDeleteConfirm(false);
+            };
+            
+            // HAUS-ZIELE
+            const addZiel = () => {
+                if (!newZielText.trim()) return;
+                
+                if (zielType === 'haus' && selectedHausName) {
+                    const key = `haus_${selectedHausName}`;
+                    setHausZiele({
+                        ...hausZiele,
+                        [key]: [...(hausZiele[key] || []), { id: Date.now(), text: newZielText }]
+                    });
+                } else if (zielType === 'academia') {
+                    setAcademiaZiele([
+                        ...academiaZiele,
+                        { id: Date.now(), text: newZielText }
+                    ]);
+                }
+                
+                setNewZielText('');
+                setZielType('haus');
+            };
+            
+            const deleteZiel = (zielId) => {
+                if (selectedHausName) {
+                    const key = `haus_${selectedHausName}`;
+                    setHausZiele({
+                        ...hausZiele,
+                        [key]: (hausZiele[key] || []).filter(z => z.id !== zielId)
+                    });
+                }
+            };
+            
+            const deleteAcademiaZiel = (zielId) => {
+                setAcademiaZiele(academiaZiele.filter(z => z.id !== zielId));
+            };
+            
+            // AUFGABEN
+            const addAufgabe = () => {
+                if (!newZielText.trim() || !selectedHausName) return;
+                
+                const key = `aufgaben_${selectedHausName}`;
+                setAufgaben({
+                    ...aufgaben,
+                    [key]: [...(aufgaben[key] || []), { id: Date.now(), text: newZielText }]
+                });
+                setNewZielText('');
+                setShowAddZielModal(false);
+            };
+            
+            const deleteAufgabe = (aufgabeId) => {
+                if (selectedHausName) {
+                    const key = `aufgaben_${selectedHausName}`;
+                    setAufgaben({
+                        ...aufgaben,
+                        [key]: (aufgaben[key] || []).filter(a => a.id !== aufgabeId)
+                    });
+                }
+            };
+            
+            // GEMEINSCHAFTSRAUM VIEW
+            if (selectedHausName !== null) {
+                const haus = HAEUSER.find(h => h.name === selectedHausName);
+                const hausZieListKey = `haus_${selectedHausName}`;
+                const aufgabenKey = `aufgaben_${selectedHausName}`;
+                
+                return (
+                    <div className="container detail-view">
+                        <button className="back-button" onClick={() => setSelectedHausName(null)}>
+                            ← Zurück
+                        </button>
+                        
+                        <div className="detail-header">
+                            <div style={{ fontSize: '48px', marginBottom: '12px' }}>{haus.emoji}</div>
+                            <div className="detail-name">Haus {haus.name}</div>
+                        </div>
+                        
+                        {/* HAUSZIELE */}
+                        <div style={{ marginBottom: '25px' }}>
+                            <div className="faecher-title">🎯 Hausziele</div>
+                            {(hausZiele[hausZieListKey] || []).map(ziel => (
+                                <div key={ziel.id} className="fach-row">
+                                    <div className="fach-name">{ziel.text}</div>
+                                    <button 
+                                        className="btn-small minus"
+                                        onClick={() => deleteZiel(ziel.id)}
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            ))}
+                            <button 
+                                className="btn-small"
+                                onClick={() => { setZielType('haus'); setShowAddZielModal(true); }}
+                                style={{ marginTop: '10px', width: '100%' }}
+                            >
+                                + Hausziel hinzufügen
+                            </button>
+                        </div>
+                        
+                        {/* ACADEMIA ZIELE */}
+                        <div style={{ marginBottom: '25px' }}>
+                            <div className="faecher-title">📖 Academia Ziele</div>
+                            {academiaZiele.map(ziel => (
+                                <div key={ziel.id} className="fach-row">
+                                    <div className="fach-name">{ziel.text}</div>
+                                    <button 
+                                        className="btn-small minus"
+                                        onClick={() => deleteAcademiaZiel(ziel.id)}
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            ))}
+                            <button 
+                                className="btn-small"
+                                onClick={() => { setZielType('academia'); setShowAddZielModal(true); }}
+                                style={{ marginTop: '10px', width: '100%' }}
+                            >
+                                + Academia Ziel hinzufügen
+                            </button>
+                        </div>
+                        
+                        {/* BLACKBOARD - AUFGABEN */}
+                        <div style={{ marginBottom: '25px' }}>
+                            <div className="faecher-title">📋 Blackboard - Aufgaben</div>
+                            {(aufgaben[aufgabenKey] || []).map(aufgabe => (
+                                <div key={aufgabe.id} className="fach-row" style={{ background: '#f9f7f4', padding: '10px 12px', borderRadius: '6px', marginBottom: '8px' }}>
+                                    <div className="fach-name">{aufgabe.text}</div>
+                                    <button 
+                                        className="btn-small minus"
+                                        onClick={() => deleteAufgabe(aufgabe.id)}
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            ))}
+                            <button 
+                                className="btn-small"
+                                onClick={() => { setZielType('aufgabe'); setShowAddZielModal(true); }}
+                                style={{ marginTop: '10px', width: '100%' }}
+                            >
+                                + Aufgabe hinzufügen
+                            </button>
+                        </div>
+                        
+                        {/* ADD MODAL */}
+                        {showAddZielModal && (
+                            <div className="modal-overlay" onClick={() => setShowAddZielModal(false)}>
+                                <div className="modal" onClick={(e) => e.stopPropagation()}>
+                                    <div className="modal-header">
+                                        <div className="modal-title">
+                                            {zielType === 'haus' ? '➕ Hausziel' : zielType === 'academia' ? '➕ Academia Ziel' : '➕ Aufgabe'}
+                                        </div>
+                                        <button 
+                                            className="modal-close"
+                                            onClick={() => setShowAddZielModal(false)}
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="form-group">
+                                        <label>{zielType === 'haus' ? 'Hausziel' : zielType === 'academia' ? 'Academia Ziel' : 'Aufgabe'}</label>
+                                        <input 
+                                            type="text"
+                                            placeholder={zielType === 'haus' ? 'z.B. Garten gemeinsam pflegen' : zielType === 'academia' ? 'z.B. Klassische Literatur lesen' : 'z.B. Hausaufgaben erledigen'}
+                                            value={newZielText}
+                                            onChange={(e) => setNewZielText(e.target.value)}
+                                            onKeyPress={(e) => e.key === 'Enter' && (zielType === 'aufgabe' ? addAufgabe() : addZiel())}
+                                            autoFocus
+                                        />
+                                    </div>
+                                    
+                                    <button 
+                                        className="btn-add-kid"
+                                        onClick={zielType === 'aufgabe' ? addAufgabe : addZiel}
+                                    >
+                                        {zielType === 'haus' ? 'Hausziel' : zielType === 'academia' ? 'Academia Ziel' : 'Aufgabe'} hinzufügen
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+            
+            // DETAIL VIEW
+            if (selectedKidId !== null) {
+                const selectedKid = kids.find(k => k.id === selectedKidId);
+                if (!selectedKid) return null;
+                
+                const gesamtpunkte = getGesamtpunkte(selectedKid);
+                const bildungspunkte = getBildungspunkte(selectedKid);
+                const prinzipienGesamtpunkte = getPrinzipienGesamtpunkte(selectedKid);
+                const prinzipienBildungspunkte = getPrinzipienBildungspunkte(selectedKid);
+                
+                return (
+                    <div className="container detail-view">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <button className="back-button" onClick={() => {
+                                setSelectedKidId(null);
+                                setSelectedTab('bildung');
+                                setEditMode(false);
+                            }}>
+                                ← Zurück
+                            </button>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                {!editMode && (
+                                    <>
+                                        <button 
+                                            className="btn-small"
+                                            onClick={() => {
+                                                setEditMode(true);
+                                                setEditedName(selectedKid.name);
+                                            }}
+                                            style={{ background: '#d4af37', color: '#2d5a3d' }}
+                                        >
+                                            ✎ Edit
+                                        </button>
+                                        <button 
+                                            className="btn-small"
+                                            onClick={() => setShowDeleteConfirm(true)}
+                                            style={{ background: '#8b4545' }}
+                                        >
+                                            🗑 Löschen
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                        
+                        {/* DELETE CONFIRMATION */}
+                        {showDeleteConfirm && (
+                            <div style={{
+                                background: '#fff3cd',
+                                border: '2px solid #d4af37',
+                                padding: '15px',
+                                borderRadius: '8px',
+                                marginBottom: '20px',
+                                textAlign: 'center'
+                            }}>
+                                <div style={{ color: '#2d5a3d', fontWeight: 'bold', marginBottom: '10px' }}>
+                                    {selectedKid.name} wirklich löschen?
+                                </div>
+                                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                                    <button 
+                                        className="btn-small"
+                                        onClick={() => setShowDeleteConfirm(false)}
+                                        style={{ background: '#3a6b52' }}
+                                    >
+                                        Abbrechen
+                                    </button>
+                                    <button 
+                                        className="btn-small minus"
+                                        onClick={() => deleteKid(selectedKidId)}
+                                    >
+                                        Ja, löschen
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                        
+                        <div className="detail-header">
+                            <div className="detail-avatar">{selectedKid.avatar}</div>
+                            {editMode ? (
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '12px' }}>
+                                    <input 
+                                        type="text"
+                                        value={editedName}
+                                        onChange={(e) => setEditedName(e.target.value)}
+                                        style={{
+                                            padding: '8px 12px',
+                                            border: '2px solid #d4af37',
+                                            borderRadius: '6px',
+                                            fontSize: '18px',
+                                            fontWeight: 'bold',
+                                            color: '#f5f1ed',
+                                            background: 'rgba(255,255,255,0.1)',
+                                            textAlign: 'center',
+                                            flex: 1,
+                                            maxWidth: '200px'
+                                        }}
+                                        autoFocus
+                                    />
+                                    <button 
+                                        className="btn-small"
+                                        onClick={() => updateKidName(selectedKidId, editedName)}
+                                        style={{ background: '#d4af37', color: '#2d5a3d' }}
+                                    >
+                                        ✓
+                                    </button>
+                                    <button 
+                                        className="btn-small"
+                                        onClick={() => setEditMode(false)}
+                                        style={{ background: '#8b4545' }}
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="detail-name">{selectedKid.name}</div>
+                                    <div style={{ fontSize: '14px', marginTop: '8px', opacity: 0.9 }}>
+                                        {selectedKid.haus.emoji} Haus {selectedKid.haus.name}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                        
+                        {/* GESAMT STATS */}
+                        <div className="bildung-stats" style={{ marginBottom: '20px' }}>
+                            <div className="stat-box">
+                                <div className="stat-value">{getBildungspunkte(selectedKid)}</div>
+                                <div className="stat-label">Bildung</div>
+                            </div>
+                            <div className="stat-box">
+                                <div className="stat-value">{getPrinzipienBildungspunkte(selectedKid)}</div>
+                                <div className="stat-label">Prinzipien</div>
+                            </div>
+                            <div className="stat-box">
+                                <div className="stat-value">{getHabitsBildungspunkte(selectedKid)}</div>
+                                <div className="stat-label">Habits</div>
+                            </div>
+                        </div>
+                        
+                        {/* TABS */}
+                        <div style={{ display: 'flex', gap: '0', marginBottom: '20px', borderBottom: '2px solid #d4af37' }}>
+                            <button
+                                onClick={() => setSelectedTab('bildung')}
+                                style={{
+                                    flex: 1,
+                                    padding: '12px',
+                                    border: 'none',
+                                    background: selectedTab === 'bildung' ? '#3a6b52' : '#f9f7f4',
+                                    color: selectedTab === 'bildung' ? '#f5f1ed' : '#2d5a3d',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold',
+                                    fontSize: '13px',
+                                    borderBottom: selectedTab === 'bildung' ? '3px solid #d4af37' : 'none',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                📚 Bildung
+                            </button>
+                            <button
+                                onClick={() => setSelectedTab('prinzipien')}
+                                style={{
+                                    flex: 1,
+                                    padding: '12px',
+                                    border: 'none',
+                                    background: selectedTab === 'prinzipien' ? '#3a6b52' : '#f9f7f4',
+                                    color: selectedTab === 'prinzipien' ? '#f5f1ed' : '#2d5a3d',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold',
+                                    fontSize: '13px',
+                                    borderBottom: selectedTab === 'prinzipien' ? '3px solid #d4af37' : 'none',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                💎 Prinzipien
+                            </button>
+                            <button
+                                onClick={() => setSelectedTab('habits')}
+                                style={{
+                                    flex: 1,
+                                    padding: '12px',
+                                    border: 'none',
+                                    background: selectedTab === 'habits' ? '#3a6b52' : '#f9f7f4',
+                                    color: selectedTab === 'habits' ? '#f5f1ed' : '#2d5a3d',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold',
+                                    fontSize: '13px',
+                                    borderBottom: selectedTab === 'habits' ? '3px solid #d4af37' : 'none',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                🔄 Habits
+                            </button>
+                        </div>
+                        
+                        {/* BILDUNG TAB */}
+                        {selectedTab === 'bildung' && (
+                            <>
+                                <div className="faecher-section">
+                                    <div className="faecher-title">Fächer</div>
+                                    {FAECHER.map(fach => (
+                                        <div key={fach} className="fach-row">
+                                            <div className="fach-name">{fach}</div>
+                                            <div className="fach-punkte">{selectedKid.punkte[fach]}</div>
+                                            <div className="fach-buttons">
+                                                <button 
+                                                    className="btn-small minus"
+                                                    onClick={() => updatePunkte(selectedKidId, fach, -1)}
+                                                >
+                                                    −
+                                                </button>
+                                                <button 
+                                                    className="btn-small"
+                                                    onClick={() => updatePunkte(selectedKidId, fach, 1)}
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                        
+                        {/* PRINZIPIEN TAB */}
+                        {selectedTab === 'prinzipien' && (
+                            <>
+                                <div className="faecher-section">
+                                    <div className="faecher-title">Werte & Prinzipien</div>
+                                    {PRINZIPIEN.map(prinzip => (
+                                        <div key={prinzip} className="fach-row">
+                                            <div className="fach-name">{prinzip}</div>
+                                            <div className="fach-punkte">{selectedKid.prinzipien[prinzip]}</div>
+                                            <div className="fach-buttons">
+                                                <button 
+                                                    className="btn-small minus"
+                                                    onClick={() => updatePrinzipienPunkte(selectedKidId, prinzip, -1)}
+                                                >
+                                                    −
+                                                </button>
+                                                <button 
+                                                    className="btn-small"
+                                                    onClick={() => updatePrinzipienPunkte(selectedKidId, prinzip, 1)}
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                        
+                        {/* HABITS TAB */}
+                        {selectedTab === 'habits' && (
+                            <>
+                                <div className="faecher-section">
+                                    <div className="faecher-title">Die 7 Habits</div>
+                                    {HABITS.map(habit => (
+                                        <div key={habit} className="fach-row">
+                                            <div className="fach-name">{habit}</div>
+                                            <div className="fach-punkte">{selectedKid.habits[habit]}</div>
+                                            <div className="fach-buttons">
+                                                <button 
+                                                    className="btn-small minus"
+                                                    onClick={() => updateHabitsPunkte(selectedKidId, habit, -1)}
+                                                >
+                                                    −
+                                                </button>
+                                                <button 
+                                                    className="btn-small"
+                                                    onClick={() => updateHabitsPunkte(selectedKidId, habit, 1)}
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                    </div>
+                );
+            }
+            
+            // DASHBOARD VIEW
+            return (
+                <div className="container">
+                    <div className="header">
+                        <div className="header-content">
+                            <h1>📚 Bildungspunkte</h1>
+                            <p>Old Money Erziehung Tracker</p>
+                        </div>
+                        {kids.length < 4 && (
+                            <button 
+                                className="header-icon"
+                                onClick={() => setShowAddKidModal(true)}
+                                title="Kind hinzufügen"
+                            >
+                                ➕
+                            </button>
+                        )}
+                    </div>
+                    
+                    {kids.length === 0 ? (
+                        <div className="empty-state">
+                            <p>Noch keine Kinder hinzugefügt.</p>
+                            <p>Drücke das ➕ Icon oben rechts um zu beginnen.</p>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="dashboard">
+                                {kids.map(kid => (
+                                    <div 
+                                        key={kid.id}
+                                        className="kid-card"
+                                        onClick={() => setSelectedKidId(kid.id)}
+                                        style={{ borderTop: `4px solid ${kid.haus.color}` }}
+                                    >
+                                        <div className="kid-avatar">{kid.avatar}</div>
+                                        <div className="kid-name">{kid.name}</div>
+                                        <div style={{ fontSize: '10px', marginBottom: '8px', color: 'rgba(255,255,255,0.8)' }}>
+                                            {kid.haus.emoji} Haus {kid.haus.name}
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                                            <div className="kid-bildung" style={{ flex: 1 }}>
+                                                {getBildungspunkte(kid)}
+                                                <div className="kid-bildung-label">Bildung</div>
+                                            </div>
+                                            <div className="kid-bildung" style={{ flex: 1, background: 'rgba(255,255,255,0.3)' }}>
+                                                {getPrinzipienBildungspunkte(kid)}
+                                                <div className="kid-bildung-label">Prinzipien</div>
+                                            </div>
+                                            <div className="kid-bildung" style={{ flex: 1, background: 'rgba(255,255,255,0.2)' }}>
+                                                {getHabitsBildungspunkte(kid)}
+                                                <div className="kid-bildung-label">Habits</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            
+                            {/* SANDUHREN */}
+                            <div className="sanduhren-section">
+                                <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '10px', color: '#2d5a3d', textAlign: 'center' }}>
+                                    Fortschritt der Häuser
+                                </div>
+                                <div className="sanduhren-container">
+                                    {HAEUSER.map(haus => {
+                                        const hausKids = kids.filter(k => k.haus.name === haus.name);
+                                        const totalBildung = hausKids.reduce((sum, kid) => 
+                                            sum + getBildungspunkte(kid) + getPrinzipienBildungspunkte(kid) + getHabitsBildungspunkte(kid), 0
+                                        );
+                                        
+                                        return (
+                                            <div 
+                                                key={haus.name} 
+                                                className="sanduhr-box"
+                                                onClick={() => setSelectedHausName(haus.name)}
+                                                style={{ cursor: 'pointer' }}
+                                            >
+                                            <svg className="sanduhr-svg" viewBox="0 0 100 160">
+                                                    <defs>
+                                                        <clipPath id={`sanduhr-clip-${haus.name}`}>
+                                                            <path d="M 50,80 L 80,150 L 20,150 Z" />
+                                                        </clipPath>
+                                                    </defs>
+
+                                                    {/* Sandfüllstand (unteres Dreieck) */}
+                                                    <rect
+                                                        x="20"
+                                                        y={150 - Math.min(70, (totalBildung / 20) * 70)}
+                                                        width="60"
+                                                        height={Math.min(70, (totalBildung / 20) * 70)}
+                                                        fill={haus.color}
+                                                        opacity="0.2"
+                                                        clipPath={`url(#sanduhr-clip-${haus.name})`}
+                                                    />
+
+                                                    {/* Minimalistische Umrisslinie */}
+                                                    <path
+                                                        d="M 20,10 L 80,10 L 50,80 L 80,150 L 20,150 L 50,80 Z"
+                                                        fill="none"
+                                                        stroke={haus.color}
+                                                        strokeWidth="2"
+                                                        strokeLinejoin="round"
+                                                        strokeLinecap="round"
+                                                    />
+                                                </svg>
+                                                <div className="sanduhr-count">{totalBildung}</div>
+                                                <div className="sanduhr-label">{haus.emoji} {haus.name}</div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </>
+                    )}
+                    
+                    {showAddKidModal && (
+                        <div className="modal-overlay" onClick={() => setShowAddKidModal(false)}>
+                            <div className="modal" onClick={(e) => e.stopPropagation()}>
+                                <div className="modal-header">
+                                    <div className="modal-title">➕ Kind hinzufügen</div>
+                                    <button 
+                                        className="modal-close"
+                                        onClick={() => setShowAddKidModal(false)}
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                                
+                                <div className="form-group">
+                                    <label>Name des Kindes</label>
+                                    <input 
+                                        type="text"
+                                        placeholder="z.B. Maximilian"
+                                        value={newKidName}
+                                        onChange={(e) => setNewKidName(e.target.value)}
+                                        onKeyPress={(e) => e.key === 'Enter' && addKid()}
+                                        autoFocus
+                                    />
+                                </div>
+                                
+                                <div className="form-group">
+                                    <label>Avatar wählen</label>
+                                    <div className="avatar-grid">
+                                        {AVATARS.map(avatar => (
+                                            <div 
+                                                key={avatar}
+                                                className={`avatar-option ${selectedAvatar === avatar ? 'selected' : ''}`}
+                                                onClick={() => setSelectedAvatar(avatar)}
+                                            >
+                                                {avatar}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                
+                                <div className="form-group">
+                                    <label>Haus wählen</label>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                        {HAEUSER.map(haus => (
+                                            <div 
+                                                key={haus.name}
+                                                onClick={() => setSelectedHaus(haus)}
+                                                style={{
+                                                    padding: '15px',
+                                                    border: '2px solid ' + (selectedHaus.name === haus.name ? haus.color : '#ddd'),
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    textAlign: 'center',
+                                                    background: selectedHaus.name === haus.name ? haus.color + '20' : 'white',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                <div style={{ fontSize: '24px', marginBottom: '5px' }}>{haus.emoji}</div>
+                                                <div style={{ fontSize: '12px', fontWeight: 'bold', color: haus.color }}>
+                                                    Haus {haus.name}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                
+                                <button 
+                                    className="btn-add-kid"
+                                    onClick={addKid}
+                                    disabled={!newKidName.trim() || kids.length >= 4}
+                                >
+                                    Kind hinzufügen
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
