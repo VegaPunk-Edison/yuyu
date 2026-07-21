@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bildungspunkte Tracker</title>
+    <title>Baker Kid</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -683,53 +683,69 @@
             const [newRewardCost, setNewRewardCost] = useState('');
             const [redeemRewardId, setRedeemRewardId] = useState(null);
 
+            // Migrate old 'bildungspunkte_*' localStorage keys to 'bakerkid_*' (one-time, on first load after rename)
+            const migrateStorageKey = (oldKey, newKey) => {
+                if (localStorage.getItem(newKey) === null) {
+                    const oldValue = localStorage.getItem(oldKey);
+                    if (oldValue !== null) {
+                        localStorage.setItem(newKey, oldValue);
+                    }
+                }
+            };
+
             // Load from localStorage on mount
             useEffect(() => {
-                const saved = localStorage.getItem('bildungspunkte_kids');
+                migrateStorageKey('bildungspunkte_kids', 'bakerkid_kids');
+                migrateStorageKey('bildungspunkte_hausziele', 'bakerkid_hausziele');
+                migrateStorageKey('bildungspunkte_academia', 'bakerkid_academia');
+                migrateStorageKey('bildungspunkte_aufgaben', 'bakerkid_aufgaben');
+                migrateStorageKey('bildungspunkte_rewards', 'bakerkid_rewards');
+
+                const saved = localStorage.getItem('bakerkid_kids');
                 if (saved) {
                     setKids(JSON.parse(saved));
                 }
-                const savedHausZiele = localStorage.getItem('bildungspunkte_hausziele');
+                const savedHausZiele = localStorage.getItem('bakerkid_hausziele');
                 if (savedHausZiele) {
                     setHausZiele(JSON.parse(savedHausZiele));
                 }
-                const savedAcademiaZiele = localStorage.getItem('bildungspunkte_academia');
+                const savedAcademiaZiele = localStorage.getItem('bakerkid_academia');
                 if (savedAcademiaZiele) {
                     setAcademiaZiele(JSON.parse(savedAcademiaZiele));
                 }
-                const savedAufgaben = localStorage.getItem('bildungspunkte_aufgaben');
+                const savedAufgaben = localStorage.getItem('bakerkid_aufgaben');
                 if (savedAufgaben) {
                     setAufgaben(JSON.parse(savedAufgaben));
                 }
-                const savedRewards = localStorage.getItem('bildungspunkte_rewards');
+                const savedRewards = localStorage.getItem('bakerkid_rewards');
                 if (savedRewards) {
                     setRewards(JSON.parse(savedRewards));
                 }
             }, []);
-            
+
             // Save to localStorage whenever kids change
             useEffect(() => {
-                localStorage.setItem('bildungspunkte_kids', JSON.stringify(kids));
+                localStorage.setItem('bakerkid_kids', JSON.stringify(kids));
             }, [kids]);
-            
+
             // Save Haus-Ziele
             useEffect(() => {
-                localStorage.setItem('bildungspunkte_hausziele', JSON.stringify(hausZiele));
+                localStorage.setItem('bakerkid_hausziele', JSON.stringify(hausZiele));
             }, [hausZiele]);
-            
+
             // Save Academia-Ziele
             useEffect(() => {
-                localStorage.setItem('bildungspunkte_academia', JSON.stringify(academiaZiele));
+                localStorage.setItem('bakerkid_academia', JSON.stringify(academiaZiele));
             }, [academiaZiele]);
-            
+
             // Save Aufgaben
             useEffect(() => {
-                localStorage.setItem('bildungspunkte_aufgaben', JSON.stringify(aufgaben));
+                localStorage.setItem('bakerkid_aufgaben', JSON.stringify(aufgaben));
             }, [aufgaben]);
 
             // Save Rewards
             useEffect(() => {
-                localStorage.setItem('bildungspunkte_rewards', JSON.stringify(rewards));
+                localStorage.setItem('bakerkid_rewards', JSON.stringify(rewards));
             }, [rewards]);
             
             const addKid = () => {
@@ -802,7 +818,7 @@
                 return Object.values(kid.punkte).reduce((a, b) => a + b, 0);
             };
             
-            const getBildungspunkte = (kid) => {
+            const getYuyuPunkte = (kid) => {
                 return Math.floor(getGesamtpunkte(kid) / PUNKTE_PRO_YUYU);
             };
 
@@ -810,7 +826,7 @@
                 return Object.values(kid.prinzipien).reduce((a, b) => a + b, 0);
             };
 
-            const getPrinzipienBildungspunkte = (kid) => {
+            const getPrinzipienYuyuPunkte = (kid) => {
                 return Math.floor(getPrinzipienGesamtpunkte(kid) / PUNKTE_PRO_YUYU);
             };
 
@@ -818,12 +834,12 @@
                 return Object.values(kid.habits).reduce((a, b) => a + b, 0);
             };
 
-            const getHabitsBildungspunkte = (kid) => {
+            const getHabitsYuyuPunkte = (kid) => {
                 return Math.floor(getHabitsGesamtpunkte(kid) / PUNKTE_PRO_YUYU);
             };
 
             const getVerfuegbarePunkte = (kid) => {
-                const total = getBildungspunkte(kid) + getPrinzipienBildungspunkte(kid) + getHabitsBildungspunkte(kid);
+                const total = getYuyuPunkte(kid) + getPrinzipienYuyuPunkte(kid) + getHabitsYuyuPunkte(kid);
                 return total - (kid.eingeloest || 0);
             };
 
@@ -1269,9 +1285,9 @@
                 if (!selectedKid) return null;
                 
                 const gesamtpunkte = getGesamtpunkte(selectedKid);
-                const bildungspunkte = getBildungspunkte(selectedKid);
+                const yuyuPunkte = getYuyuPunkte(selectedKid);
                 const prinzipienGesamtpunkte = getPrinzipienGesamtpunkte(selectedKid);
-                const prinzipienBildungspunkte = getPrinzipienBildungspunkte(selectedKid);
+                const prinzipienYuyuPunkte = getPrinzipienYuyuPunkte(selectedKid);
                 
                 return (
                     <div className="container detail-view">
@@ -1389,15 +1405,15 @@
                         {/* GESAMT STATS */}
                         <div className="bildung-stats" style={{ marginBottom: '20px' }}>
                             <div className="stat-box">
-                                <div className="stat-value">{getBildungspunkte(selectedKid)}</div>
+                                <div className="stat-value">{getYuyuPunkte(selectedKid)}</div>
                                 <div className="stat-label">Bildung</div>
                             </div>
                             <div className="stat-box">
-                                <div className="stat-value">{getPrinzipienBildungspunkte(selectedKid)}</div>
+                                <div className="stat-value">{getPrinzipienYuyuPunkte(selectedKid)}</div>
                                 <div className="stat-label">Tugend</div>
                             </div>
                             <div className="stat-box">
-                                <div className="stat-value">{getHabitsBildungspunkte(selectedKid)}</div>
+                                <div className="stat-value">{getHabitsYuyuPunkte(selectedKid)}</div>
                                 <div className="stat-label">Habit</div>
                             </div>
                         </div>
@@ -1551,7 +1567,7 @@
                 <div className="container">
                     <div className="header">
                         <div className="header-content">
-                            <h1>📚 Bildungspunkte</h1>
+                            <h1>📚 Baker Kid</h1>
                             <p>Old Money Erziehung Tracker</p>
                         </div>
                         {kids.length < 4 && (
@@ -1592,15 +1608,15 @@
                                         </div>
                                         <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                                             <div className="kid-bildung" style={{ flex: 1 }}>
-                                                {getBildungspunkte(kid)}
+                                                {getYuyuPunkte(kid)}
                                                 <div className="kid-bildung-label">Bildung</div>
                                             </div>
                                             <div className="kid-bildung" style={{ flex: 1, background: 'rgba(255,255,255,0.3)' }}>
-                                                {getPrinzipienBildungspunkte(kid)}
+                                                {getPrinzipienYuyuPunkte(kid)}
                                                 <div className="kid-bildung-label">Tugend</div>
                                             </div>
                                             <div className="kid-bildung" style={{ flex: 1, background: 'rgba(255,255,255,0.2)' }}>
-                                                {getHabitsBildungspunkte(kid)}
+                                                {getHabitsYuyuPunkte(kid)}
                                                 <div className="kid-bildung-label">Habit</div>
                                             </div>
                                         </div>
@@ -1617,7 +1633,7 @@
                                     {HAEUSER.map(haus => {
                                         const hausKids = kids.filter(k => k.haus.name === haus.name);
                                         const totalBildung = hausKids.reduce((sum, kid) =>
-                                            sum + getBildungspunkte(kid) + getPrinzipienBildungspunkte(kid) + getHabitsBildungspunkte(kid), 0
+                                            sum + getYuyuPunkte(kid) + getPrinzipienYuyuPunkte(kid) + getHabitsYuyuPunkte(kid), 0
                                         );
                                         const sanduhrFraction = Math.min(1, totalBildung / SANDUHR_MAX);
                                         const sanduhrVoll = totalBildung >= SANDUHR_MAX;
