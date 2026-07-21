@@ -642,7 +642,12 @@
             { name: 'Erde', emoji: '🌍', icon: HAUS_ICON_ERDE, color: '#27ae60' },
             { name: 'Luft', emoji: '💨', icon: HAUS_ICON_LUFT, color: '#f1c40f' }
         ];
-        
+
+        // Kinder speichern ihr Haus als Kopie in localStorage - bei Kindern, die vor
+        // einem Haus-Update (z.B. neues Icon) angelegt wurden, fehlen neue Felder.
+        // Deshalb hier immer live anhand des Namens nachschlagen statt der Kopie trauen.
+        const getHaus = (hausRef) => HAEUSER.find(h => h.name === hausRef?.name) || hausRef;
+
         function App() {
             const [kids, setKids] = useState([]);
             const [selectedKidId, setSelectedKidId] = useState(null);
@@ -1376,7 +1381,7 @@
                             ) : (
                                 <>
                                     <div className="detail-name">{selectedKid.name}</div>
-                                    <img src={selectedKid.haus.icon} alt={selectedKid.haus.name} style={{ width: '48px', height: '48px', marginTop: '8px' }} />
+                                    <img src={getHaus(selectedKid.haus).icon} alt={selectedKid.haus.name} style={{ width: '48px', height: '48px', marginTop: '8px' }} />
                                 </>
                             )}
                         </div>
@@ -1573,14 +1578,14 @@
                                         key={kid.id}
                                         className="kid-card"
                                         onClick={() => setSelectedKidId(kid.id)}
-                                        style={{ borderTop: `4px solid ${kid.haus.color}` }}
+                                        style={{ borderTop: `4px solid ${getHaus(kid.haus).color}` }}
                                     >
                                         <div className="kid-avatar">
                                             <img src={kid.avatar.src} alt={kid.avatar.label} />
                                         </div>
                                         <div className="kid-name">{kid.name}</div>
                                         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
-                                            <img src={kid.haus.icon} alt={kid.haus.name} style={{ width: '34px', height: '34px' }} />
+                                            <img src={getHaus(kid.haus).icon} alt={kid.haus.name} style={{ width: '34px', height: '34px' }} />
                                         </div>
                                         <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                                             <div className="kid-bildung" style={{ flex: 1 }}>
