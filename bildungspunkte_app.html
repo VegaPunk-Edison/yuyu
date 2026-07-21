@@ -971,46 +971,6 @@
                             <img src={haus.icon} alt={haus.name} style={{ width: '170px', height: '170px' }} />
                         </div>
                         
-                        {/* HAUSZIELE */}
-                        <div style={{ marginBottom: '25px' }}>
-                            <div className="faecher-title">🎯 Hausziele</div>
-                            {(hausZiele[hausZieListKey] || []).map(ziel => (
-                                <div key={ziel.id} className="fach-row">
-                                    {editingItemId === ziel.id ? (
-                                        <>
-                                            <input
-                                                type="text"
-                                                value={editingItemText}
-                                                onChange={(e) => setEditingItemText(e.target.value)}
-                                                onKeyPress={(e) => e.key === 'Enter' && updateZiel(ziel.id, editingItemText)}
-                                                autoFocus
-                                                style={{ flex: 1, padding: '6px 10px', border: '2px solid #d4af37', borderRadius: '6px', fontSize: '14px', marginRight: '8px' }}
-                                            />
-                                            <div className="fach-buttons">
-                                                <button className="btn-small" onClick={() => updateZiel(ziel.id, editingItemText)} style={{ background: '#d4af37', color: '#2d5a3d' }}>✓</button>
-                                                <button className="btn-small minus" onClick={() => setEditingItemId(null)}>✕</button>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <div className="fach-name">{ziel.text}</div>
-                                            <div className="fach-buttons">
-                                                <button className="btn-small" onClick={() => { setEditingItemId(ziel.id); setEditingItemText(ziel.text); }} style={{ background: '#d4af37', color: '#2d5a3d' }}>✎</button>
-                                                <button className="btn-small minus" onClick={() => deleteZiel(ziel.id)}>✕</button>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            ))}
-                            <button
-                                className="btn-small"
-                                onClick={() => { setZielType('haus'); setShowAddZielModal(true); }}
-                                style={{ marginTop: '10px', width: '100%' }}
-                            >
-                                + Hausziel hinzufügen
-                            </button>
-                        </div>
-
                         {/* ACADEMIA ZIELE */}
                         <div style={{ marginBottom: '25px' }}>
                             <div className="faecher-title">📖 Academia Ziele</div>
@@ -1048,6 +1008,46 @@
                                 style={{ marginTop: '10px', width: '100%' }}
                             >
                                 + Academia Ziel hinzufügen
+                            </button>
+                        </div>
+
+                        {/* HAUSZIELE */}
+                        <div style={{ marginBottom: '25px' }}>
+                            <div className="faecher-title">🎯 Hausziele</div>
+                            {(hausZiele[hausZieListKey] || []).map(ziel => (
+                                <div key={ziel.id} className="fach-row">
+                                    {editingItemId === ziel.id ? (
+                                        <>
+                                            <input
+                                                type="text"
+                                                value={editingItemText}
+                                                onChange={(e) => setEditingItemText(e.target.value)}
+                                                onKeyPress={(e) => e.key === 'Enter' && updateZiel(ziel.id, editingItemText)}
+                                                autoFocus
+                                                style={{ flex: 1, padding: '6px 10px', border: '2px solid #d4af37', borderRadius: '6px', fontSize: '14px', marginRight: '8px' }}
+                                            />
+                                            <div className="fach-buttons">
+                                                <button className="btn-small" onClick={() => updateZiel(ziel.id, editingItemText)} style={{ background: '#d4af37', color: '#2d5a3d' }}>✓</button>
+                                                <button className="btn-small minus" onClick={() => setEditingItemId(null)}>✕</button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="fach-name">{ziel.text}</div>
+                                            <div className="fach-buttons">
+                                                <button className="btn-small" onClick={() => { setEditingItemId(ziel.id); setEditingItemText(ziel.text); }} style={{ background: '#d4af37', color: '#2d5a3d' }}>✎</button>
+                                                <button className="btn-small minus" onClick={() => deleteZiel(ziel.id)}>✕</button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            ))}
+                            <button
+                                className="btn-small"
+                                onClick={() => { setZielType('haus'); setShowAddZielModal(true); }}
+                                style={{ marginTop: '10px', width: '100%' }}
+                            >
+                                + Hausziel hinzufügen
                             </button>
                         </div>
 
