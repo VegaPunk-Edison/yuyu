@@ -1584,8 +1584,11 @@
                                             <img src={kid.avatar.src} alt={kid.avatar.label} />
                                         </div>
                                         <div className="kid-name">{kid.name}</div>
-                                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'center' }}>
                                             <img src={getHaus(kid.haus).icon} alt={kid.haus.name} style={{ width: '34px', height: '34px' }} />
+                                        </div>
+                                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#d4af37', marginBottom: '8px' }}>
+                                            {getVerfuegbarePunkte(kid)} Mauzbits
                                         </div>
                                         <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                                             <div className="kid-bildung" style={{ flex: 1 }}>
