@@ -637,7 +637,7 @@
     <div id="root"></div>
     
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
         
         const FAECHER = [
             'Sprache & Rhetorik',
@@ -760,6 +760,7 @@
             const [showAddRewardModal, setShowAddRewardModal] = useState(false);
             const [newRewardText, setNewRewardText] = useState('');
             const [newRewardCost, setNewRewardCost] = useState('');
+            const [editingRewardId, setEditingRewardId] = useState(null);
             const [redeemRewardId, setRedeemRewardId] = useState(null);
 
             // Migrate old 'bildungspunkte_*' localStorage keys to 'bakerkid_*' (one-time, on first load after rename)
@@ -1099,20 +1100,98 @@
             };
 
             // REWARDSSTORE
-            const addReward = () => {
+            const saveReward = () => {
                 const cost = Number(newRewardCost);
                 if (!newRewardText.trim() || !cost || cost <= 0) return;
 
-                setRewards([...rewards, { id: Date.now(), text: newRewardText, cost }]);
+                if (editingRewardId !== null) {
+                    setRewards(rewards.map(r =>
+                        r.id === editingRewardId ? { ...r, text: newRewardText, cost } : r
+                    ));
+                } else {
+                    setRewards([...rewards, { id: Date.now(), text: newRewardText, cost }]);
+                }
                 setNewRewardText('');
                 setNewRewardCost('');
+                setEditingRewardId(null);
                 setShowAddRewardModal(false);
+            };
+
+            const startEditReward = (reward) => {
+                setEditingRewardId(reward.id);
+                setNewRewardText(reward.text);
+                setNewRewardCost(String(reward.cost));
+                setShowAddRewardModal(true);
+            };
+
+            const closeRewardModal = () => {
+                setShowAddRewardModal(false);
+                setEditingRewardId(null);
+                setNewRewardText('');
+                setNewRewardCost('');
             };
 
             const deleteReward = (rewardId) => {
                 setRewards(rewards.filter(r => r.id !== rewardId));
                 setRedeemRewardId(null);
             };
+
+            // Reward per Gedrückt-Halten verschieben (Long-Press-Drag)
+            const [draggingRewardId, setDraggingRewardId] = useState(null);
+            const rewardDragRef = useRef({ timer: null });
+
+            const handleRewardHandlePointerDown = (e, reward) => {
+                const startX = e.clientX;
+                const startY = e.clientY;
+                const cancelIfMoved = (moveEvent) => {
+                    if (Math.abs(moveEvent.clientX - startX) > 8 || Math.abs(moveEvent.clientY - startY) > 8) {
+                        clearTimeout(rewardDragRef.current.timer);
+                        window.removeEventListener('pointermove', cancelIfMoved);
+                    }
+                };
+                const clearOnUp = () => {
+                    clearTimeout(rewardDragRef.current.timer);
+                    window.removeEventListener('pointermove', cancelIfMoved);
+                    window.removeEventListener('pointerup', clearOnUp);
+                };
+                window.addEventListener('pointermove', cancelIfMoved);
+                window.addEventListener('pointerup', clearOnUp, { once: true });
+                rewardDragRef.current.timer = setTimeout(() => {
+                    window.removeEventListener('pointermove', cancelIfMoved);
+                    window.removeEventListener('pointerup', clearOnUp);
+                    setDraggingRewardId(String(reward.id));
+                }, 350);
+            };
+
+            useEffect(() => {
+                if (draggingRewardId === null) return;
+
+                const handleMove = (e) => {
+                    const el = document.elementFromPoint(e.clientX, e.clientY);
+                    const rowEl = el && el.closest('[data-reward-id]');
+                    if (!rowEl) return;
+                    const overId = rowEl.getAttribute('data-reward-id');
+                    if (overId === draggingRewardId) return;
+                    setRewards(prev => {
+                        const fromIndex = prev.findIndex(r => String(r.id) === draggingRewardId);
+                        const toIndex = prev.findIndex(r => String(r.id) === overId);
+                        if (fromIndex === -1 || toIndex === -1) return prev;
+                        const updated = [...prev];
+                        const [moved] = updated.splice(fromIndex, 1);
+                        updated.splice(toIndex, 0, moved);
+                        return updated;
+                    });
+                };
+
+                const handleUp = () => setDraggingRewardId(null);
+
+                window.addEventListener('pointermove', handleMove);
+                window.addEventListener('pointerup', handleUp);
+                return () => {
+                    window.removeEventListener('pointermove', handleMove);
+                    window.removeEventListener('pointerup', handleUp);
+                };
+            }, [draggingRewardId]);
 
             const redeemReward = (kidId, reward) => {
                 setKids(kids.map(kid => {
@@ -1324,9 +1403,26 @@
                         ) : (
                             rewards.map(reward => {
                                 const isRedeeming = redeemRewardId === reward.id;
+                                const isDragging = draggingRewardId === String(reward.id);
                                 return (
-                                    <div key={reward.id} style={{ marginBottom: '12px' }}>
+                                    <div
+                                        key={reward.id}
+                                        data-reward-id={reward.id}
+                                        style={{
+                                            marginBottom: '12px',
+                                            opacity: isDragging ? 0.5 : 1,
+                                            border: isDragging ? '2px dashed #d4af37' : '2px solid transparent',
+                                            borderRadius: '8px'
+                                        }}
+                                    >
                                         <div className="fach-row">
+                                            <span
+                                                onPointerDown={(e) => handleRewardHandlePointerDown(e, reward)}
+                                                style={{ cursor: 'grab', touchAction: 'none', color: '#5a5a5a', fontSize: '16px', padding: '0 6px', userSelect: 'none' }}
+                                                title="Gedrückt halten zum Verschieben"
+                                            >
+                                                ⠿
+                                            </span>
                                             <div className="fach-name">{reward.text}</div>
                                             <div className="fach-punkte">{reward.cost} P</div>
                                             <div className="fach-buttons">
@@ -1336,6 +1432,13 @@
                                                     disabled={kids.length === 0}
                                                 >
                                                     Einlösen
+                                                </button>
+                                                <button
+                                                    className="btn-small"
+                                                    onClick={() => startEditReward(reward)}
+                                                    style={{ background: '#d4af37', color: '#2d5a3d' }}
+                                                >
+                                                    ✎
                                                 </button>
                                                 <button
                                                     className="btn-small minus"
@@ -1384,18 +1487,18 @@
 
                         <button
                             className="btn-small"
-                            onClick={() => setShowAddRewardModal(true)}
+                            onClick={() => { setEditingRewardId(null); setNewRewardText(''); setNewRewardCost(''); setShowAddRewardModal(true); }}
                             style={{ marginTop: '10px', width: '100%' }}
                         >
                             + Reward hinzufügen
                         </button>
 
                         {showAddRewardModal && (
-                            <div className="modal-overlay" onClick={() => setShowAddRewardModal(false)}>
+                            <div className="modal-overlay" onClick={closeRewardModal}>
                                 <div className="modal" onClick={(e) => e.stopPropagation()}>
                                     <div className="modal-header">
-                                        <div className="modal-title">🎁 Reward hinzufügen</div>
-                                        <button className="modal-close" onClick={() => setShowAddRewardModal(false)}>✕</button>
+                                        <div className="modal-title">{editingRewardId !== null ? '✎ Reward bearbeiten' : '🎁 Reward hinzufügen'}</div>
+                                        <button className="modal-close" onClick={closeRewardModal}>✕</button>
                                     </div>
 
                                     <div className="form-group">
@@ -1417,16 +1520,16 @@
                                             placeholder="z.B. 10"
                                             value={newRewardCost}
                                             onChange={(e) => setNewRewardCost(e.target.value)}
-                                            onKeyPress={(e) => e.key === 'Enter' && addReward()}
+                                            onKeyPress={(e) => e.key === 'Enter' && saveReward()}
                                         />
                                     </div>
 
                                     <button
                                         className="btn-add-kid"
-                                        onClick={addReward}
+                                        onClick={saveReward}
                                         disabled={!newRewardText.trim() || !newRewardCost || Number(newRewardCost) <= 0}
                                     >
-                                        Reward hinzufügen
+                                        {editingRewardId !== null ? 'Speichern' : 'Reward hinzufügen'}
                                     </button>
                                 </div>
                             </div>
