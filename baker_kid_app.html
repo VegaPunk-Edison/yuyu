@@ -810,6 +810,7 @@
             const [newAufgabeKidId, setNewAufgabeKidId] = useState(null);
             const [newAufgabeTag, setNewAufgabeTag] = useState(null);
             const [newAufgabeKategorie, setNewAufgabeKategorie] = useState(null);
+            const [aufgabenKategorieOffen, setAufgabenKategorieOffen] = useState({ bildung: true, tugend: true, habit: true, sonstiges: true });
             const [newAufgabeTagStepDone, setNewAufgabeTagStepDone] = useState(false);
             const [editingItemTag, setEditingItemTag] = useState(null);
 
@@ -1432,13 +1433,25 @@
                             ].map(kat => {
                                 const hausKids = kids.filter(k => k.haus.name === selectedHausName);
                                 const aufgabenDerKategorie = (aufgaben[aufgabenKey] || []).filter(a => (a.tag ? a.tag.kategorie : 'sonstiges') === kat.key);
-                                if (aufgabenDerKategorie.length === 0) return null;
+                                const istOffen = aufgabenKategorieOffen[kat.key];
                                 return (
                                     <div key={kat.key} style={{ marginBottom: '18px' }}>
-                                        <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#2d5a3d', marginBottom: '8px' }}>
-                                            {kat.icon} {kat.label}
+                                        <div
+                                            onClick={() => setAufgabenKategorieOffen({ ...aufgabenKategorieOffen, [kat.key]: !istOffen })}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                fontSize: '13px', fontWeight: 'bold', color: '#2d5a3d',
+                                                background: '#f9f7f4', border: '1px solid #e8e4e0', borderRadius: '6px',
+                                                padding: '10px 12px', marginBottom: istOffen ? '8px' : '0', cursor: 'pointer'
+                                            }}
+                                        >
+                                            <span>{kat.icon} {kat.label} <span style={{ color: '#5a5a5a', fontWeight: 'normal' }}>({aufgabenDerKategorie.length})</span></span>
+                                            <span style={{ transition: 'transform 0.2s', display: 'inline-block', transform: istOffen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</span>
                                         </div>
-                                        {aufgabenDerKategorie.map(aufgabe => {
+                                        {istOffen && aufgabenDerKategorie.length === 0 && (
+                                            <div style={{ fontSize: '12px', color: '#999', padding: '4px 4px 8px' }}>Noch keine Aufgaben.</div>
+                                        )}
+                                        {istOffen && aufgabenDerKategorie.map(aufgabe => {
                                             const zugeordnetesKind = kids.find(k => k.id === aufgabe.kidId);
                                             const isEditing = editingItemId === aufgabe.id;
                                             const editAtQuery = isEditing ? getAtQuery(editingItemText) : null;
