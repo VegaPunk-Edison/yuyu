@@ -676,6 +676,37 @@
             'Bett morgens machen'
         ];
 
+        // Alle einzeln per @-Tag markierbaren Fächer/Prinzipien/Habits (für die Aufgaben-Verknüpfung)
+        const ALL_TAGGABLE_ITEMS = [
+            ...FAECHER.map(name => ({ kategorie: 'bildung', name, icon: '📚' })),
+            ...PRINZIPIEN.map(name => ({ kategorie: 'tugend', name, icon: '💎' })),
+            ...HABITS.map(name => ({ kategorie: 'habit', name, icon: '🔄' })),
+        ];
+
+        const TAG_ICONS = { bildung: '📚', tugend: '💎', habit: '🔄' };
+
+        // Liefert den Suchtext nach dem letzten "@" in der Eingabe, oder null wenn gerade kein @-Tag getippt wird
+        const getAtQuery = (text) => {
+            const atIndex = text.lastIndexOf('@');
+            if (atIndex === -1) return null;
+            const afterAt = text.slice(atIndex + 1);
+            if (/\s/.test(afterAt)) return null;
+            return afterAt;
+        };
+
+        const getTagSuggestions = (query) => {
+            if (query === null) return [];
+            const q = query.toLowerCase();
+            return ALL_TAGGABLE_ITEMS.filter(item => item.name.toLowerCase().includes(q)).slice(0, 8);
+        };
+
+        // Entfernt das "@query" am Ende der Eingabe, nachdem ein Tag ausgewählt wurde
+        const stripAtQuery = (text) => {
+            const atIndex = text.lastIndexOf('@');
+            if (atIndex === -1) return text;
+            return text.slice(0, atIndex).trimEnd();
+        };
+
         // Fest vorhandene Rewards im Rewardstore, immer wieder kaufbar solange genug Guthaben da ist
         const DEFAULT_REWARDS = [
             { id: 'default-heiltrank', text: 'Heilungstrank', cost: 2, healAmount: 4 },
@@ -684,13 +715,27 @@
 
         // Migriert altes Blackboard-Aufgaben-Format (flaches Array pro Haus) auf { bildung, tugend, habit }.
         // Bestehende unkategorisierte Aufgaben landen dabei unter "tugend".
+        // Migriert Blackboard-Aufgaben jeglichen alten Formats auf ein flaches Array
+        // pro Haus: [{ id, text, kidId, tag: {kategorie, name} | null, done }].
+        // - Uraltes Format: flaches Array ohne Kategorie -> alles nach Tugend (grob, ohne Einzel-Tag)
+        // - Zwischenformat: { bildung: [], tugend: [], habit: [] } -> geflacht, je Eintrag grob getaggt
+        // - Neues Format: flaches Array, Einträge haben bereits ein "tag"-Feld -> unverändert
         const migrateAufgabenFormat = (rawAufgaben) => {
             const migriert = {};
             Object.keys(rawAufgaben || {}).forEach(key => {
                 const wert = rawAufgaben[key];
-                migriert[key] = Array.isArray(wert)
-                    ? { bildung: [], tugend: wert, habit: [] }
-                    : wert;
+                if (Array.isArray(wert)) {
+                    const istNeuesFormat = wert.length === 0 || wert[0].tag !== undefined;
+                    migriert[key] = istNeuesFormat
+                        ? wert
+                        : wert.map(a => ({ ...a, kidId: a.kidId || null, tag: { kategorie: 'tugend', name: null }, done: false }));
+                } else if (wert && typeof wert === 'object') {
+                    migriert[key] = ['bildung', 'tugend', 'habit'].flatMap(kat =>
+                        (wert[kat] || []).map(a => ({ ...a, kidId: a.kidId || null, tag: { kategorie: kat, name: null }, done: false }))
+                    );
+                } else {
+                    migriert[key] = [];
+                }
             });
             return migriert;
         };
@@ -762,8 +807,9 @@
             const [showAddZielModal, setShowAddZielModal] = useState(false);
             const [newZielText, setNewZielText] = useState('');
             const [zielType, setZielType] = useState('haus');
-            const [newAufgabeKategorie, setNewAufgabeKategorie] = useState('bildung');
             const [newAufgabeKidId, setNewAufgabeKidId] = useState(null);
+            const [newAufgabeTag, setNewAufgabeTag] = useState(null);
+            const [editingItemTag, setEditingItemTag] = useState(null);
 
             // Inline-Bearbeitung von Hauszielen/Academia-Zielen/Aufgaben
             const [editingItemId, setEditingItemId] = useState(null);
@@ -1081,67 +1127,83 @@
             };
 
             // AUFGABEN
-            const leereAufgabenKategorien = { bildung: [], tugend: [], habit: [] };
-
-            const addAufgabe = (kategorie, kidId) => {
-                if (!newZielText.trim() || !selectedHausName) return;
+            const addAufgabe = (text, tag, kidId) => {
+                if (!text.trim() || !selectedHausName) return;
 
                 const key = `aufgaben_${selectedHausName}`;
-                const bisherige = aufgaben[key] || leereAufgabenKategorien;
+                const bisherige = aufgaben[key] || [];
                 setAufgaben({
                     ...aufgaben,
-                    [key]: {
-                        ...bisherige,
-                        [kategorie]: [...(bisherige[kategorie] || []), { id: Date.now(), text: newZielText, kidId: kidId || null }]
-                    }
+                    [key]: [...bisherige, { id: Date.now(), text: text.trim(), kidId: kidId || null, tag: tag || null, done: false }]
                 });
                 setNewZielText('');
                 setNewAufgabeKidId(null);
+                setNewAufgabeTag(null);
                 setShowAddZielModal(false);
             };
 
-            const assignAufgabeToKid = (aufgabeId, kategorie, kidId) => {
+            const assignAufgabeToKid = (aufgabeId, kidId) => {
                 if (!selectedHausName) return;
                 const key = `aufgaben_${selectedHausName}`;
-                const bisherige = aufgaben[key] || leereAufgabenKategorien;
+                const bisherige = aufgaben[key] || [];
                 setAufgaben({
                     ...aufgaben,
-                    [key]: {
-                        ...bisherige,
-                        [kategorie]: (bisherige[kategorie] || []).map(a =>
-                            a.id === aufgabeId ? { ...a, kidId: kidId || null } : a
-                        )
-                    }
+                    [key]: bisherige.map(a => a.id === aufgabeId ? { ...a, kidId: kidId || null } : a)
                 });
             };
 
-            const deleteAufgabe = (aufgabeId, kategorie) => {
+            const deleteAufgabe = (aufgabeId) => {
                 if (selectedHausName) {
                     const key = `aufgaben_${selectedHausName}`;
-                    const bisherige = aufgaben[key] || leereAufgabenKategorien;
+                    const bisherige = aufgaben[key] || [];
                     setAufgaben({
                         ...aufgaben,
-                        [key]: {
-                            ...bisherige,
-                            [kategorie]: (bisherige[kategorie] || []).filter(a => a.id !== aufgabeId)
-                        }
+                        [key]: bisherige.filter(a => a.id !== aufgabeId)
                     });
                 }
             };
 
-            const updateAufgabe = (aufgabeId, kategorie, newText) => {
+            const updateAufgabe = (aufgabeId, newText, newTag) => {
                 if (selectedHausName) {
                     const key = `aufgaben_${selectedHausName}`;
-                    const bisherige = aufgaben[key] || leereAufgabenKategorien;
+                    const bisherige = aufgaben[key] || [];
                     setAufgaben({
                         ...aufgaben,
-                        [key]: {
-                            ...bisherige,
-                            [kategorie]: (bisherige[kategorie] || []).map(a => a.id === aufgabeId ? { ...a, text: newText } : a)
-                        }
+                        [key]: bisherige.map(a => a.id === aufgabeId ? { ...a, text: newText.trim(), tag: newTag !== undefined ? newTag : a.tag } : a)
                     });
                 }
                 setEditingItemId(null);
+            };
+
+            // Erledigen/Zurücksetzen einer getaggten Aufgabe vergibt/entzieht direkt einen Punkt
+            // beim zugeordneten Kind, ohne die Herzabzug-Logik auszulösen (kein Bestrafungs-Klick).
+            const toggleAufgabeDone = (aufgabe) => {
+                if (!selectedHausName) return;
+                const key = `aufgaben_${selectedHausName}`;
+                const bisherige = aufgaben[key] || [];
+                const wirdErledigt = !aufgabe.done;
+
+                setAufgaben({
+                    ...aufgaben,
+                    [key]: bisherige.map(a => a.id === aufgabe.id ? { ...a, done: wirdErledigt } : a)
+                });
+
+                if (aufgabe.tag && aufgabe.tag.name && aufgabe.kidId) {
+                    const delta = wirdErledigt ? 1 : -1;
+                    setKids(kids.map(kid => {
+                        if (kid.id !== aufgabe.kidId) return kid;
+                        if (aufgabe.tag.kategorie === 'bildung') {
+                            return { ...kid, punkte: { ...kid.punkte, [aufgabe.tag.name]: (kid.punkte[aufgabe.tag.name] || 0) + delta } };
+                        }
+                        if (aufgabe.tag.kategorie === 'tugend') {
+                            return { ...kid, prinzipien: { ...kid.prinzipien, [aufgabe.tag.name]: (kid.prinzipien[aufgabe.tag.name] || 0) + delta } };
+                        }
+                        if (aufgabe.tag.kategorie === 'habit') {
+                            return { ...kid, habits: { ...kid.habits, [aufgabe.tag.name]: (kid.habits[aufgabe.tag.name] || 0) + delta } };
+                        }
+                        return kid;
+                    }));
+                }
             };
 
             // REWARDSSTORE
@@ -1350,119 +1412,160 @@
                         {/* BLACKBOARD - AUFGABEN */}
                         <div style={{ marginBottom: '25px' }}>
                             <div className="faecher-title">📋 Blackboard - Aufgaben</div>
+                            <button
+                                className="btn-small"
+                                onClick={() => { setZielType('aufgabe'); setNewAufgabeKidId(null); setNewAufgabeTag(null); setNewZielText(''); setShowAddZielModal(true); }}
+                                style={{ width: '100%', marginBottom: '14px' }}
+                            >
+                                + Aufgabe hinzufügen
+                            </button>
+
                             {[
                                 { key: 'bildung', icon: '📚', label: 'Bildung' },
                                 { key: 'tugend', icon: '💎', label: 'Tugend' },
                                 { key: 'habit', icon: '🔄', label: 'Habit' },
-                            ].map(kat => (
-                                <div key={kat.key} style={{ marginBottom: '18px' }}>
-                                    <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#2d5a3d', marginBottom: '8px' }}>
-                                        {kat.icon} {kat.label}
-                                    </div>
-                                    <button
-                                        className="btn-small"
-                                        onClick={() => { setZielType('aufgabe'); setNewAufgabeKategorie(kat.key); setNewAufgabeKidId(null); setShowAddZielModal(true); }}
-                                        style={{ width: '100%', marginBottom: '8px' }}
-                                    >
-                                        + Aufgabe hinzufügen
-                                    </button>
-                                    {((aufgaben[aufgabenKey] || leereAufgabenKategorien)[kat.key] || []).map(aufgabe => {
-                                        const zugeordnetesKind = kids.find(k => k.id === aufgabe.kidId);
-                                        const isEditing = editingItemId === aufgabe.id;
-                                        const hausKids = kids.filter(k => k.haus.name === selectedHausName);
-                                        return (
-                                            <div key={aufgabe.id} style={{ marginBottom: '8px' }}>
-                                                <div
-                                                    className="fach-row"
-                                                    style={{
-                                                        background: '#f9f7f4',
-                                                        border: zugeordnetesKind ? '2px solid #2d5a3d' : '2px solid transparent',
-                                                        padding: '10px 12px',
-                                                        borderRadius: '6px'
-                                                    }}
-                                                >
-                                                    {isEditing ? (
-                                                        <>
-                                                            <input
-                                                                type="text"
-                                                                value={editingItemText}
-                                                                onChange={(e) => setEditingItemText(e.target.value)}
-                                                                onKeyPress={(e) => e.key === 'Enter' && updateAufgabe(aufgabe.id, kat.key, editingItemText)}
-                                                                autoFocus
-                                                                style={{ flex: 1, padding: '6px 10px', border: '2px solid #d4af37', borderRadius: '6px', fontSize: '14px', marginRight: '8px' }}
-                                                            />
-                                                            <div className="fach-buttons">
-                                                                <button className="btn-small" onClick={() => updateAufgabe(aufgabe.id, kat.key, editingItemText)} style={{ background: '#d4af37', color: '#2d5a3d' }}>✓</button>
-                                                                <button className="btn-small minus" onClick={() => setEditingItemId(null)}>✕</button>
-                                                            </div>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <div style={{ flex: 1 }}>
-                                                                <div className="fach-name">{aufgabe.text}</div>
-                                                                {zugeordnetesKind && (
-                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
-                                                                        <img src={zugeordnetesKind.avatar.src} alt={zugeordnetesKind.avatar.label} style={{ width: '18px', height: '18px', borderRadius: '50%', objectFit: 'cover' }} />
-                                                                        <span style={{ fontSize: '11px', color: '#2d5a3d', fontWeight: 'bold' }}>{zugeordnetesKind.name}</span>
+                                { key: 'sonstiges', icon: '📌', label: 'Sonstiges' },
+                            ].map(kat => {
+                                const hausKids = kids.filter(k => k.haus.name === selectedHausName);
+                                const aufgabenDerKategorie = (aufgaben[aufgabenKey] || []).filter(a => (a.tag ? a.tag.kategorie : 'sonstiges') === kat.key);
+                                if (aufgabenDerKategorie.length === 0) return null;
+                                return (
+                                    <div key={kat.key} style={{ marginBottom: '18px' }}>
+                                        <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#2d5a3d', marginBottom: '8px' }}>
+                                            {kat.icon} {kat.label}
+                                        </div>
+                                        {aufgabenDerKategorie.map(aufgabe => {
+                                            const zugeordnetesKind = kids.find(k => k.id === aufgabe.kidId);
+                                            const isEditing = editingItemId === aufgabe.id;
+                                            const editAtQuery = isEditing ? getAtQuery(editingItemText) : null;
+                                            const editSuggestions = getTagSuggestions(editAtQuery);
+                                            return (
+                                                <div key={aufgabe.id} style={{ marginBottom: '8px' }}>
+                                                    <div
+                                                        className="fach-row"
+                                                        style={{
+                                                            background: '#f9f7f4',
+                                                            border: zugeordnetesKind ? '2px solid #2d5a3d' : '2px solid transparent',
+                                                            padding: '10px 12px',
+                                                            borderRadius: '6px',
+                                                            alignItems: isEditing ? 'stretch' : 'center'
+                                                        }}
+                                                    >
+                                                        {isEditing ? (
+                                                            <div style={{ width: '100%' }}>
+                                                                <input
+                                                                    type="text"
+                                                                    value={editingItemText}
+                                                                    onChange={(e) => setEditingItemText(e.target.value)}
+                                                                    placeholder="Aufgabe... (@ für Fach/Tugend/Habit)"
+                                                                    autoFocus
+                                                                    style={{ width: '100%', boxSizing: 'border-box', padding: '6px 10px', border: '2px solid #d4af37', borderRadius: '6px', fontSize: '14px' }}
+                                                                />
+                                                                {editAtQuery !== null && editSuggestions.length > 0 && (
+                                                                    <div style={{ background: 'white', border: '1px solid #ddd', borderRadius: '6px', marginTop: '4px', overflow: 'hidden' }}>
+                                                                        {editSuggestions.map(item => (
+                                                                            <div
+                                                                                key={item.kategorie + item.name}
+                                                                                onClick={() => { setEditingItemText(stripAtQuery(editingItemText)); setEditingItemTag({ kategorie: item.kategorie, name: item.name }); }}
+                                                                                style={{ padding: '8px 10px', cursor: 'pointer', fontSize: '13px', borderBottom: '1px solid #f0f0f0' }}
+                                                                            >
+                                                                                {item.icon} {item.name}
+                                                                            </div>
+                                                                        ))}
                                                                     </div>
                                                                 )}
+                                                                {editingItemTag && (
+                                                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#f0f8f5', border: '1px solid #3a6b52', borderRadius: '20px', padding: '4px 10px', marginTop: '8px', fontSize: '12px', fontWeight: 'bold', color: '#2d5a3d' }}>
+                                                                        {TAG_ICONS[editingItemTag.kategorie]} {editingItemTag.name}
+                                                                        <span onClick={() => setEditingItemTag(null)} style={{ cursor: 'pointer', color: '#8b4545' }}>✕</span>
+                                                                    </div>
+                                                                )}
+                                                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', padding: '10px 0', justifyContent: 'center' }}>
+                                                                    <button
+                                                                        onClick={() => assignAufgabeToKid(aufgabe.id, null)}
+                                                                        style={{
+                                                                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+                                                                            background: !aufgabe.kidId ? '#f0f8f5' : '#f5f5f5',
+                                                                            border: `2px solid ${!aufgabe.kidId ? '#3a6b52' : '#ddd'}`, borderRadius: '10px',
+                                                                            padding: '8px', cursor: 'pointer', minWidth: '60px'
+                                                                        }}
+                                                                    >
+                                                                        <span style={{ fontSize: '20px' }}>🚫</span>
+                                                                        <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#5a5a5a' }}>Niemand</span>
+                                                                    </button>
+                                                                    {hausKids.map(kid => (
+                                                                        <button
+                                                                            key={kid.id}
+                                                                            onClick={() => assignAufgabeToKid(aufgabe.id, kid.id)}
+                                                                            style={{
+                                                                                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+                                                                                background: aufgabe.kidId === kid.id ? '#f0f8f5' : 'white',
+                                                                                border: `2px solid ${aufgabe.kidId === kid.id ? '#3a6b52' : '#ddd'}`,
+                                                                                borderRadius: '10px', padding: '8px', cursor: 'pointer', minWidth: '60px'
+                                                                            }}
+                                                                        >
+                                                                            <img src={kid.avatar.src} alt={kid.avatar.label} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                                            <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#2d5a3d' }}>{kid.name}</span>
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                                <div className="fach-buttons" style={{ justifyContent: 'center' }}>
+                                                                    <button className="btn-small" onClick={() => updateAufgabe(aufgabe.id, editingItemText, editingItemTag)} style={{ background: '#d4af37', color: '#2d5a3d' }}>✓ Speichern</button>
+                                                                    <button className="btn-small minus" onClick={() => setEditingItemId(null)}>✕ Abbrechen</button>
+                                                                </div>
                                                             </div>
-                                                            <div className="fach-buttons">
-                                                                <button className="btn-small" onClick={() => { setEditingItemId(aufgabe.id); setEditingItemText(aufgabe.text); }} style={{ background: '#d4af37', color: '#2d5a3d' }}>✎</button>
-                                                                <button className="btn-small minus" onClick={() => deleteAufgabe(aufgabe.id, kat.key)}>✕</button>
-                                                            </div>
-                                                        </>
-                                                    )}
-                                                </div>
-                                                {isEditing && (
-                                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', padding: '10px 0', justifyContent: 'center' }}>
-                                                        <button
-                                                            onClick={() => assignAufgabeToKid(aufgabe.id, kat.key, null)}
-                                                            style={{
-                                                                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
-                                                                background: !aufgabe.kidId ? '#f0f8f5' : '#f5f5f5',
-                                                                border: `2px solid ${!aufgabe.kidId ? '#3a6b52' : '#ddd'}`, borderRadius: '10px',
-                                                                padding: '8px', cursor: 'pointer', minWidth: '60px'
-                                                            }}
-                                                        >
-                                                            <span style={{ fontSize: '20px' }}>🚫</span>
-                                                            <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#5a5a5a' }}>Niemand</span>
-                                                        </button>
-                                                        {hausKids.map(kid => (
-                                                            <button
-                                                                key={kid.id}
-                                                                onClick={() => assignAufgabeToKid(aufgabe.id, kat.key, kid.id)}
-                                                                style={{
-                                                                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
-                                                                    background: aufgabe.kidId === kid.id ? '#f0f8f5' : 'white',
-                                                                    border: `2px solid ${aufgabe.kidId === kid.id ? '#3a6b52' : '#ddd'}`,
-                                                                    borderRadius: '10px', padding: '8px', cursor: 'pointer', minWidth: '60px'
-                                                                }}
-                                                            >
-                                                                <img src={kid.avatar.src} alt={kid.avatar.label} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
-                                                                <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#2d5a3d' }}>{kid.name}</span>
-                                                            </button>
-                                                        ))}
+                                                        ) : (
+                                                            <>
+                                                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flex: 1 }}>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={!!aufgabe.done}
+                                                                        onChange={() => toggleAufgabeDone(aufgabe)}
+                                                                        style={{ marginTop: '4px', width: '18px', height: '18px', cursor: 'pointer', flexShrink: 0 }}
+                                                                    />
+                                                                    <div>
+                                                                        <div className="fach-name" style={{ textDecoration: aufgabe.done ? 'line-through' : 'none', color: aufgabe.done ? '#999' : undefined }}>
+                                                                            {aufgabe.text}
+                                                                        </div>
+                                                                        {aufgabe.tag && aufgabe.tag.name && (
+                                                                            <div style={{ fontSize: '11px', color: '#8a6d1a', fontWeight: 'bold', marginTop: '2px' }}>
+                                                                                {TAG_ICONS[aufgabe.tag.kategorie]} {aufgabe.tag.name}
+                                                                            </div>
+                                                                        )}
+                                                                        {zugeordnetesKind && (
+                                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
+                                                                                <img src={zugeordnetesKind.avatar.src} alt={zugeordnetesKind.avatar.label} style={{ width: '18px', height: '18px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                                                <span style={{ fontSize: '11px', color: '#2d5a3d', fontWeight: 'bold' }}>{zugeordnetesKind.name}</span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="fach-buttons">
+                                                                    <button className="btn-small" onClick={() => { setEditingItemId(aufgabe.id); setEditingItemText(aufgabe.text); setEditingItemTag(aufgabe.tag); }} style={{ background: '#d4af37', color: '#2d5a3d' }}>✎</button>
+                                                                    <button className="btn-small minus" onClick={() => deleteAufgabe(aufgabe.id)}>✕</button>
+                                                                </div>
+                                                            </>
+                                                        )}
                                                     </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ))}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                );
+                            })}
                         </div>
 
                         {/* ADD MODAL */}
                         {showAddZielModal && (
-                            <div className="modal-overlay" onClick={() => { setShowAddZielModal(false); setNewAufgabeKidId(null); }}>
+                            <div className="modal-overlay" onClick={() => { setShowAddZielModal(false); setNewAufgabeKidId(null); setNewAufgabeTag(null); }}>
                                 <div className="modal" onClick={(e) => e.stopPropagation()}>
                                     <div className="modal-header">
                                         <div className="modal-title">
-                                            {zielType === 'haus' ? '➕ Hausziel' : zielType === 'academia' ? '➕ Academia Ziel' : `➕ Aufgabe (${{ bildung: 'Bildung', tugend: 'Tugend', habit: 'Habit' }[newAufgabeKategorie]})`}
+                                            {zielType === 'haus' ? '➕ Hausziel' : zielType === 'academia' ? '➕ Academia Ziel' : '➕ Aufgabe'}
                                         </div>
                                         <button
                                             className="modal-close"
-                                            onClick={() => { setShowAddZielModal(false); setNewAufgabeKidId(null); }}
+                                            onClick={() => { setShowAddZielModal(false); setNewAufgabeKidId(null); setNewAufgabeTag(null); }}
                                         >
                                             ✕
                                         </button>
@@ -1472,12 +1575,35 @@
                                         <label>{zielType === 'haus' ? 'Hausziel' : zielType === 'academia' ? 'Academia Ziel' : 'Aufgabe'}</label>
                                         <input
                                             type="text"
-                                            placeholder={zielType === 'haus' ? 'z.B. Garten gemeinsam pflegen' : zielType === 'academia' ? 'z.B. Klassische Literatur lesen' : 'z.B. Hausaufgaben erledigen'}
+                                            placeholder={zielType === 'haus' ? 'z.B. Garten gemeinsam pflegen' : zielType === 'academia' ? 'z.B. Klassische Literatur lesen' : 'z.B. Mathe Hausaufgaben @Mathematik'}
                                             value={newZielText}
                                             onChange={(e) => setNewZielText(e.target.value)}
-                                            onKeyPress={(e) => e.key === 'Enter' && (zielType === 'aufgabe' ? addAufgabe(newAufgabeKategorie, newAufgabeKidId) : addZiel())}
+                                            onKeyPress={(e) => e.key === 'Enter' && zielType !== 'aufgabe' && addZiel()}
                                             autoFocus
                                         />
+                                        {zielType === 'aufgabe' && (() => {
+                                            const query = getAtQuery(newZielText);
+                                            const suggestions = getTagSuggestions(query);
+                                            return query !== null && suggestions.length > 0 && (
+                                                <div style={{ background: 'white', border: '1px solid #ddd', borderRadius: '6px', marginTop: '4px', overflow: 'hidden' }}>
+                                                    {suggestions.map(item => (
+                                                        <div
+                                                            key={item.kategorie + item.name}
+                                                            onClick={() => { setNewZielText(stripAtQuery(newZielText)); setNewAufgabeTag({ kategorie: item.kategorie, name: item.name }); }}
+                                                            style={{ padding: '8px 10px', cursor: 'pointer', fontSize: '13px', borderBottom: '1px solid #f0f0f0' }}
+                                                        >
+                                                            {item.icon} {item.name}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                        })()}
+                                        {zielType === 'aufgabe' && newAufgabeTag && (
+                                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#f0f8f5', border: '1px solid #3a6b52', borderRadius: '20px', padding: '4px 10px', marginTop: '8px', fontSize: '12px', fontWeight: 'bold', color: '#2d5a3d' }}>
+                                                {TAG_ICONS[newAufgabeTag.kategorie]} {newAufgabeTag.name}
+                                                <span onClick={() => setNewAufgabeTag(null)} style={{ cursor: 'pointer', color: '#8b4545' }}>✕</span>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {zielType === 'aufgabe' && (
@@ -1519,7 +1645,7 @@
 
                                     <button
                                         className="btn-add-kid"
-                                        onClick={() => zielType === 'aufgabe' ? addAufgabe(newAufgabeKategorie, newAufgabeKidId) : addZiel()}
+                                        onClick={() => zielType === 'aufgabe' ? addAufgabe(newZielText, newAufgabeTag, newAufgabeKidId) : addZiel()}
                                     >
                                         {zielType === 'haus' ? 'Hausziel' : zielType === 'academia' ? 'Academia Ziel' : 'Aufgabe'} hinzufügen
                                     </button>
@@ -1695,16 +1821,10 @@
                 const avatarSrc = erschoepft && selectedKid.avatar.downSrc ? selectedKid.avatar.downSrc : selectedKid.avatar.src;
                 const herzPfad = "M 50 85 C 20 60, 0 40, 0 22 C 0 8, 12 0, 25 0 C 37 0, 47 8, 50 20 C 53 8, 63 0, 75 0 C 88 0, 100 8, 100 22 C 100 40, 80 60, 50 85 Z";
 
-                const aufgabenDesHauses = aufgaben[`aufgaben_${selectedKid.haus.name}`] || leereAufgabenKategorien;
-                const zugewieseneAufgaben = [
-                    { key: 'bildung', icon: '📚' },
-                    { key: 'tugend', icon: '💎' },
-                    { key: 'habit', icon: '🔄' },
-                ].flatMap(kat =>
-                    (aufgabenDesHauses[kat.key] || [])
-                        .filter(a => a.kidId === selectedKid.id)
-                        .map(a => ({ ...a, icon: kat.icon }))
-                );
+                const aufgabenDesHauses = aufgaben[`aufgaben_${selectedKid.haus.name}`] || [];
+                const zugewieseneAufgaben = aufgabenDesHauses
+                    .filter(a => a.kidId === selectedKid.id)
+                    .map(a => ({ ...a, icon: a.tag ? TAG_ICONS[a.tag.kategorie] : '📌' }));
 
                 return (
                     <div className="container detail-view level-view">
@@ -1775,7 +1895,12 @@
                                         className="fach-row"
                                         style={{ background: 'rgba(255,255,255,0.12)', borderRadius: '8px', padding: '10px 12px', marginBottom: '8px' }}
                                     >
-                                        <div className="fach-name" style={{ color: '#f5f1ed' }}>{aufgabe.icon} {aufgabe.text}</div>
+                                        <div
+                                            className="fach-name"
+                                            style={{ color: '#f5f1ed', textDecoration: aufgabe.done ? 'line-through' : 'none', opacity: aufgabe.done ? 0.6 : 1 }}
+                                        >
+                                            {aufgabe.icon} {aufgabe.text}{aufgabe.tag && aufgabe.tag.name ? ` (${aufgabe.tag.name})` : ''}
+                                        </div>
                                     </div>
                                 ))
                             )}
