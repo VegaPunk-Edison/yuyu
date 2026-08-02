@@ -763,6 +763,8 @@
             const [newZielText, setNewZielText] = useState('');
             const [zielType, setZielType] = useState('haus');
             const [newAufgabeKategorie, setNewAufgabeKategorie] = useState('bildung');
+            const [newAufgabeKidId, setNewAufgabeKidId] = useState(null);
+            const [assigningAufgabeId, setAssigningAufgabeId] = useState(null);
 
             // Inline-Bearbeitung von Hauszielen/Academia-Zielen/Aufgaben
             const [editingItemId, setEditingItemId] = useState(null);
@@ -1082,7 +1084,7 @@
             // AUFGABEN
             const leereAufgabenKategorien = { bildung: [], tugend: [], habit: [] };
 
-            const addAufgabe = (kategorie) => {
+            const addAufgabe = (kategorie, kidId) => {
                 if (!newZielText.trim() || !selectedHausName) return;
 
                 const key = `aufgaben_${selectedHausName}`;
@@ -1091,11 +1093,28 @@
                     ...aufgaben,
                     [key]: {
                         ...bisherige,
-                        [kategorie]: [...(bisherige[kategorie] || []), { id: Date.now(), text: newZielText }]
+                        [kategorie]: [...(bisherige[kategorie] || []), { id: Date.now(), text: newZielText, kidId: kidId || null }]
                     }
                 });
                 setNewZielText('');
+                setNewAufgabeKidId(null);
                 setShowAddZielModal(false);
+            };
+
+            const assignAufgabeToKid = (aufgabeId, kategorie, kidId) => {
+                if (!selectedHausName) return;
+                const key = `aufgaben_${selectedHausName}`;
+                const bisherige = aufgaben[key] || leereAufgabenKategorien;
+                setAufgaben({
+                    ...aufgaben,
+                    [key]: {
+                        ...bisherige,
+                        [kategorie]: (bisherige[kategorie] || []).map(a =>
+                            a.id === aufgabeId ? { ...a, kidId: kidId || null } : a
+                        )
+                    }
+                });
+                setAssigningAufgabeId(null);
             };
 
             const deleteAufgabe = (aufgabeId, kategorie) => {
@@ -1342,37 +1361,91 @@
                                     <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#2d5a3d', marginBottom: '8px' }}>
                                         {kat.icon} {kat.label}
                                     </div>
-                                    {((aufgaben[aufgabenKey] || leereAufgabenKategorien)[kat.key] || []).map(aufgabe => (
-                                        <div key={aufgabe.id} className="fach-row" style={{ background: '#f9f7f4', padding: '10px 12px', borderRadius: '6px', marginBottom: '8px' }}>
-                                            {editingItemId === aufgabe.id ? (
-                                                <>
-                                                    <input
-                                                        type="text"
-                                                        value={editingItemText}
-                                                        onChange={(e) => setEditingItemText(e.target.value)}
-                                                        onKeyPress={(e) => e.key === 'Enter' && updateAufgabe(aufgabe.id, kat.key, editingItemText)}
-                                                        autoFocus
-                                                        style={{ flex: 1, padding: '6px 10px', border: '2px solid #d4af37', borderRadius: '6px', fontSize: '14px', marginRight: '8px' }}
-                                                    />
-                                                    <div className="fach-buttons">
-                                                        <button className="btn-small" onClick={() => updateAufgabe(aufgabe.id, kat.key, editingItemText)} style={{ background: '#d4af37', color: '#2d5a3d' }}>✓</button>
-                                                        <button className="btn-small minus" onClick={() => setEditingItemId(null)}>✕</button>
+                                    {((aufgaben[aufgabenKey] || leereAufgabenKategorien)[kat.key] || []).map(aufgabe => {
+                                        const zugeordnetesKind = kids.find(k => k.id === aufgabe.kidId);
+                                        const isAssigning = assigningAufgabeId === aufgabe.id;
+                                        const hausKids = kids.filter(k => k.haus.name === selectedHausName);
+                                        return (
+                                            <div key={aufgabe.id} style={{ marginBottom: '8px' }}>
+                                                <div
+                                                    className="fach-row"
+                                                    style={{
+                                                        background: zugeordnetesKind ? 'rgba(212,175,55,0.12)' : '#f9f7f4',
+                                                        borderLeft: zugeordnetesKind ? '4px solid #d4af37' : 'none',
+                                                        padding: '10px 12px',
+                                                        borderRadius: '6px'
+                                                    }}
+                                                >
+                                                    {editingItemId === aufgabe.id ? (
+                                                        <>
+                                                            <input
+                                                                type="text"
+                                                                value={editingItemText}
+                                                                onChange={(e) => setEditingItemText(e.target.value)}
+                                                                onKeyPress={(e) => e.key === 'Enter' && updateAufgabe(aufgabe.id, kat.key, editingItemText)}
+                                                                autoFocus
+                                                                style={{ flex: 1, padding: '6px 10px', border: '2px solid #d4af37', borderRadius: '6px', fontSize: '14px', marginRight: '8px' }}
+                                                            />
+                                                            <div className="fach-buttons">
+                                                                <button className="btn-small" onClick={() => updateAufgabe(aufgabe.id, kat.key, editingItemText)} style={{ background: '#d4af37', color: '#2d5a3d' }}>✓</button>
+                                                                <button className="btn-small minus" onClick={() => setEditingItemId(null)}>✕</button>
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <div style={{ flex: 1 }}>
+                                                                <div className="fach-name">{aufgabe.text}</div>
+                                                                {zugeordnetesKind && (
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
+                                                                        <img src={zugeordnetesKind.avatar.src} alt={zugeordnetesKind.avatar.label} style={{ width: '18px', height: '18px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                                        <span style={{ fontSize: '11px', color: '#8a6d1a', fontWeight: 'bold' }}>{zugeordnetesKind.name}</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="fach-buttons">
+                                                                <button className="btn-small" onClick={() => setAssigningAufgabeId(isAssigning ? null : aufgabe.id)}>👤</button>
+                                                                <button className="btn-small" onClick={() => { setEditingItemId(aufgabe.id); setEditingItemText(aufgabe.text); }} style={{ background: '#d4af37', color: '#2d5a3d' }}>✎</button>
+                                                                <button className="btn-small minus" onClick={() => deleteAufgabe(aufgabe.id, kat.key)}>✕</button>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                                {isAssigning && (
+                                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', padding: '10px 0', justifyContent: 'center' }}>
+                                                        <button
+                                                            onClick={() => assignAufgabeToKid(aufgabe.id, kat.key, null)}
+                                                            style={{
+                                                                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+                                                                background: '#f5f5f5', border: '2px solid #ddd', borderRadius: '10px',
+                                                                padding: '8px', cursor: 'pointer', minWidth: '60px'
+                                                            }}
+                                                        >
+                                                            <span style={{ fontSize: '20px' }}>🚫</span>
+                                                            <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#5a5a5a' }}>Niemand</span>
+                                                        </button>
+                                                        {hausKids.map(kid => (
+                                                            <button
+                                                                key={kid.id}
+                                                                onClick={() => assignAufgabeToKid(aufgabe.id, kat.key, kid.id)}
+                                                                style={{
+                                                                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+                                                                    background: aufgabe.kidId === kid.id ? '#f0f8f5' : 'white',
+                                                                    border: `2px solid ${aufgabe.kidId === kid.id ? '#3a6b52' : '#ddd'}`,
+                                                                    borderRadius: '10px', padding: '8px', cursor: 'pointer', minWidth: '60px'
+                                                                }}
+                                                            >
+                                                                <img src={kid.avatar.src} alt={kid.avatar.label} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                                <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#2d5a3d' }}>{kid.name}</span>
+                                                            </button>
+                                                        ))}
                                                     </div>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <div className="fach-name">{aufgabe.text}</div>
-                                                    <div className="fach-buttons">
-                                                        <button className="btn-small" onClick={() => { setEditingItemId(aufgabe.id); setEditingItemText(aufgabe.text); }} style={{ background: '#d4af37', color: '#2d5a3d' }}>✎</button>
-                                                        <button className="btn-small minus" onClick={() => deleteAufgabe(aufgabe.id, kat.key)}>✕</button>
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-                                    ))}
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                     <button
                                         className="btn-small"
-                                        onClick={() => { setZielType('aufgabe'); setNewAufgabeKategorie(kat.key); setShowAddZielModal(true); }}
+                                        onClick={() => { setZielType('aufgabe'); setNewAufgabeKategorie(kat.key); setNewAufgabeKidId(null); setShowAddZielModal(true); }}
                                         style={{ width: '100%' }}
                                     >
                                         + Aufgabe hinzufügen
@@ -1383,35 +1456,72 @@
 
                         {/* ADD MODAL */}
                         {showAddZielModal && (
-                            <div className="modal-overlay" onClick={() => setShowAddZielModal(false)}>
+                            <div className="modal-overlay" onClick={() => { setShowAddZielModal(false); setNewAufgabeKidId(null); }}>
                                 <div className="modal" onClick={(e) => e.stopPropagation()}>
                                     <div className="modal-header">
                                         <div className="modal-title">
                                             {zielType === 'haus' ? '➕ Hausziel' : zielType === 'academia' ? '➕ Academia Ziel' : `➕ Aufgabe (${{ bildung: 'Bildung', tugend: 'Tugend', habit: 'Habit' }[newAufgabeKategorie]})`}
                                         </div>
-                                        <button 
+                                        <button
                                             className="modal-close"
-                                            onClick={() => setShowAddZielModal(false)}
+                                            onClick={() => { setShowAddZielModal(false); setNewAufgabeKidId(null); }}
                                         >
                                             ✕
                                         </button>
                                     </div>
-                                    
+
                                     <div className="form-group">
                                         <label>{zielType === 'haus' ? 'Hausziel' : zielType === 'academia' ? 'Academia Ziel' : 'Aufgabe'}</label>
-                                        <input 
+                                        <input
                                             type="text"
                                             placeholder={zielType === 'haus' ? 'z.B. Garten gemeinsam pflegen' : zielType === 'academia' ? 'z.B. Klassische Literatur lesen' : 'z.B. Hausaufgaben erledigen'}
                                             value={newZielText}
                                             onChange={(e) => setNewZielText(e.target.value)}
-                                            onKeyPress={(e) => e.key === 'Enter' && (zielType === 'aufgabe' ? addAufgabe(newAufgabeKategorie) : addZiel())}
+                                            onKeyPress={(e) => e.key === 'Enter' && (zielType === 'aufgabe' ? addAufgabe(newAufgabeKategorie, newAufgabeKidId) : addZiel())}
                                             autoFocus
                                         />
                                     </div>
 
+                                    {zielType === 'aufgabe' && (
+                                        <div className="form-group">
+                                            <label>Zuordnen (optional)</label>
+                                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setNewAufgabeKidId(null)}
+                                                    style={{
+                                                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+                                                        background: newAufgabeKidId === null ? '#f0f8f5' : '#f5f5f5',
+                                                        border: `2px solid ${newAufgabeKidId === null ? '#3a6b52' : '#ddd'}`,
+                                                        borderRadius: '10px', padding: '8px', cursor: 'pointer', minWidth: '60px'
+                                                    }}
+                                                >
+                                                    <span style={{ fontSize: '20px' }}>🚫</span>
+                                                    <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#5a5a5a' }}>Niemand</span>
+                                                </button>
+                                                {kids.filter(k => k.haus.name === selectedHausName).map(kid => (
+                                                    <button
+                                                        type="button"
+                                                        key={kid.id}
+                                                        onClick={() => setNewAufgabeKidId(kid.id)}
+                                                        style={{
+                                                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+                                                            background: newAufgabeKidId === kid.id ? '#f0f8f5' : 'white',
+                                                            border: `2px solid ${newAufgabeKidId === kid.id ? '#3a6b52' : '#ddd'}`,
+                                                            borderRadius: '10px', padding: '8px', cursor: 'pointer', minWidth: '60px'
+                                                        }}
+                                                    >
+                                                        <img src={kid.avatar.src} alt={kid.avatar.label} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                        <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#2d5a3d' }}>{kid.name}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <button
                                         className="btn-add-kid"
-                                        onClick={() => zielType === 'aufgabe' ? addAufgabe(newAufgabeKategorie) : addZiel()}
+                                        onClick={() => zielType === 'aufgabe' ? addAufgabe(newAufgabeKategorie, newAufgabeKidId) : addZiel()}
                                     >
                                         {zielType === 'haus' ? 'Hausziel' : zielType === 'academia' ? 'Academia Ziel' : 'Aufgabe'} hinzufügen
                                     </button>
@@ -1587,6 +1697,17 @@
                 const avatarSrc = erschoepft && selectedKid.avatar.downSrc ? selectedKid.avatar.downSrc : selectedKid.avatar.src;
                 const herzPfad = "M 50 85 C 20 60, 0 40, 0 22 C 0 8, 12 0, 25 0 C 37 0, 47 8, 50 20 C 53 8, 63 0, 75 0 C 88 0, 100 8, 100 22 C 100 40, 80 60, 50 85 Z";
 
+                const aufgabenDesHauses = aufgaben[`aufgaben_${selectedKid.haus.name}`] || leereAufgabenKategorien;
+                const zugewieseneAufgaben = [
+                    { key: 'bildung', icon: '📚' },
+                    { key: 'tugend', icon: '💎' },
+                    { key: 'habit', icon: '🔄' },
+                ].flatMap(kat =>
+                    (aufgabenDesHauses[kat.key] || [])
+                        .filter(a => a.kidId === selectedKid.id)
+                        .map(a => ({ ...a, icon: kat.icon }))
+                );
+
                 return (
                     <div className="container detail-view level-view">
                         <button className="back-button" onClick={() => setShowLevelView(false)}>
@@ -1641,6 +1762,25 @@
                         <div className="stat-box" style={{ textAlign: 'center' }}>
                             <div className="stat-value" style={{ color: '#d4af37' }}>{getVerfuegbarePunkte(selectedKid)}</div>
                             <div className="stat-label">Mauzbits</div>
+                        </div>
+
+                        <div style={{ marginTop: '20px' }}>
+                            <div className="level-avatar-label" style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '10px' }}>
+                                📋 Zugewiesene Aufgaben
+                            </div>
+                            {zugewieseneAufgaben.length === 0 ? (
+                                <div className="level-avatar-label" style={{ fontSize: '13px' }}>Keine Aufgaben zugewiesen.</div>
+                            ) : (
+                                zugewieseneAufgaben.map(aufgabe => (
+                                    <div
+                                        key={aufgabe.id}
+                                        className="fach-row"
+                                        style={{ background: 'rgba(255,255,255,0.12)', borderRadius: '8px', padding: '10px 12px', marginBottom: '8px' }}
+                                    >
+                                        <div className="fach-name" style={{ color: '#f5f1ed' }}>{aufgabe.icon} {aufgabe.text}</div>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
                 );
