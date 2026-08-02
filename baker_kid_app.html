@@ -764,7 +764,6 @@
             const [zielType, setZielType] = useState('haus');
             const [newAufgabeKategorie, setNewAufgabeKategorie] = useState('bildung');
             const [newAufgabeKidId, setNewAufgabeKidId] = useState(null);
-            const [assigningAufgabeId, setAssigningAufgabeId] = useState(null);
 
             // Inline-Bearbeitung von Hauszielen/Academia-Zielen/Aufgaben
             const [editingItemId, setEditingItemId] = useState(null);
@@ -1114,7 +1113,6 @@
                         )
                     }
                 });
-                setAssigningAufgabeId(null);
             };
 
             const deleteAufgabe = (aufgabeId, kategorie) => {
@@ -1370,20 +1368,20 @@
                                     </button>
                                     {((aufgaben[aufgabenKey] || leereAufgabenKategorien)[kat.key] || []).map(aufgabe => {
                                         const zugeordnetesKind = kids.find(k => k.id === aufgabe.kidId);
-                                        const isAssigning = assigningAufgabeId === aufgabe.id;
+                                        const isEditing = editingItemId === aufgabe.id;
                                         const hausKids = kids.filter(k => k.haus.name === selectedHausName);
                                         return (
                                             <div key={aufgabe.id} style={{ marginBottom: '8px' }}>
                                                 <div
                                                     className="fach-row"
                                                     style={{
-                                                        background: zugeordnetesKind ? 'rgba(212,175,55,0.12)' : '#f9f7f4',
-                                                        borderLeft: zugeordnetesKind ? '4px solid #d4af37' : 'none',
+                                                        background: '#f9f7f4',
+                                                        border: zugeordnetesKind ? '2px solid #2d5a3d' : '2px solid transparent',
                                                         padding: '10px 12px',
                                                         borderRadius: '6px'
                                                     }}
                                                 >
-                                                    {editingItemId === aufgabe.id ? (
+                                                    {isEditing ? (
                                                         <>
                                                             <input
                                                                 type="text"
@@ -1405,25 +1403,25 @@
                                                                 {zugeordnetesKind && (
                                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
                                                                         <img src={zugeordnetesKind.avatar.src} alt={zugeordnetesKind.avatar.label} style={{ width: '18px', height: '18px', borderRadius: '50%', objectFit: 'cover' }} />
-                                                                        <span style={{ fontSize: '11px', color: '#8a6d1a', fontWeight: 'bold' }}>{zugeordnetesKind.name}</span>
+                                                                        <span style={{ fontSize: '11px', color: '#2d5a3d', fontWeight: 'bold' }}>{zugeordnetesKind.name}</span>
                                                                     </div>
                                                                 )}
                                                             </div>
                                                             <div className="fach-buttons">
-                                                                <button className="btn-small" onClick={() => setAssigningAufgabeId(isAssigning ? null : aufgabe.id)}>👤</button>
                                                                 <button className="btn-small" onClick={() => { setEditingItemId(aufgabe.id); setEditingItemText(aufgabe.text); }} style={{ background: '#d4af37', color: '#2d5a3d' }}>✎</button>
                                                                 <button className="btn-small minus" onClick={() => deleteAufgabe(aufgabe.id, kat.key)}>✕</button>
                                                             </div>
                                                         </>
                                                     )}
                                                 </div>
-                                                {isAssigning && (
+                                                {isEditing && (
                                                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', padding: '10px 0', justifyContent: 'center' }}>
                                                         <button
                                                             onClick={() => assignAufgabeToKid(aufgabe.id, kat.key, null)}
                                                             style={{
                                                                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
-                                                                background: '#f5f5f5', border: '2px solid #ddd', borderRadius: '10px',
+                                                                background: !aufgabe.kidId ? '#f0f8f5' : '#f5f5f5',
+                                                                border: `2px solid ${!aufgabe.kidId ? '#3a6b52' : '#ddd'}`, borderRadius: '10px',
                                                                 padding: '8px', cursor: 'pointer', minWidth: '60px'
                                                             }}
                                                         >
