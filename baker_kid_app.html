@@ -1361,6 +1361,13 @@
                                     <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#2d5a3d', marginBottom: '8px' }}>
                                         {kat.icon} {kat.label}
                                     </div>
+                                    <button
+                                        className="btn-small"
+                                        onClick={() => { setZielType('aufgabe'); setNewAufgabeKategorie(kat.key); setNewAufgabeKidId(null); setShowAddZielModal(true); }}
+                                        style={{ width: '100%', marginBottom: '8px' }}
+                                    >
+                                        + Aufgabe hinzufügen
+                                    </button>
                                     {((aufgaben[aufgabenKey] || leereAufgabenKategorien)[kat.key] || []).map(aufgabe => {
                                         const zugeordnetesKind = kids.find(k => k.id === aufgabe.kidId);
                                         const isAssigning = assigningAufgabeId === aufgabe.id;
@@ -1443,13 +1450,6 @@
                                             </div>
                                         );
                                     })}
-                                    <button
-                                        className="btn-small"
-                                        onClick={() => { setZielType('aufgabe'); setNewAufgabeKategorie(kat.key); setNewAufgabeKidId(null); setShowAddZielModal(true); }}
-                                        style={{ width: '100%' }}
-                                    >
-                                        + Aufgabe hinzufügen
-                                    </button>
                                 </div>
                             ))}
                         </div>
